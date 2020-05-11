@@ -20,7 +20,7 @@
     "@angular/platform-browser-dynamic": "~9.1.6",
     "@angular/router": "~9.1.6",
     "bigint-conversion": "^2.1.10",
-    "bigint-crypto-utils": "^3.0.5",
+    "bigint-crypto-utils": "~2.4.7",
     "rsa-scii-upc": "^1.0.0",
     "rxjs": "~6.5.4",
     "tslib": "^1.10.0",
