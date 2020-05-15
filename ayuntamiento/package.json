@@ -21,8 +21,10 @@
     "@angular/router": "~9.1.6",
     "bigint-conversion": "^2.1.10",
     "bigint-crypto-utils": "3.0.6",
+    "hashmap": "^2.4.0",
     "rsa-scii-upc": "^1.0.1",
     "rxjs": "~6.5.4",
+    "socket.io-client": "^2.3.0",
     "tslib": "^1.10.0",
     "zone.js": "~0.10.2"
   },

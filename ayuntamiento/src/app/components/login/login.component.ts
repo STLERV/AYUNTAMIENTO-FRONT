@@ -49,7 +49,11 @@ export class LoginComponent implements OnInit {
           }
           if(res["data"]["id"] == 'concejal1' || res["data"]["id"] == 'concejal2'  || res["data"]["id"] =='concejal3'|| res["data"]["id"] =='concejal4' ){
 
-            this.router.navigateByUrl("concejal");
+            name = res["data"]["name"];
+
+            console.log(name);
+            
+            this.router.navigate(['/concejal', name])
 
           }
 

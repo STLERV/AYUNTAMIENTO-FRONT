@@ -8,7 +8,7 @@ const routes: Routes = [
 
   {path: 'login', component: LoginComponent},
   {path: 'alcalde', component: AlcaldeComponent},
-  {path: 'concejal', component: ConcejalComponent},
+  {path: 'concejal/:name', component: ConcejalComponent},
   {path: '', redirectTo: 'login', pathMatch: 'full'}
 ];
 
