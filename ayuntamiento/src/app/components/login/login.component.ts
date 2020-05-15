@@ -35,17 +35,25 @@ export class LoginComponent implements OnInit {
         if (res["data"] == null) {
           M.toast({ html: 'Ese usuario no existe' })
 
-        } else if (res["data"] != null) {
+        }  
+         else if (res["data"] != null) {
 
           M.toast({ html: 'Very good login' })
+          
 
+          }
           if(res["data"]["id"] == 'alcalde'){
 
             this.router.navigateByUrl("alcalde");
 
           }
+          if(res["data"]["id"] == 'concejal1' || res["data"]["id"] == 'concejal2'  || res["data"]["id"] =='concejal3'|| res["data"]["id"] =='concejal4' ){
 
-        }
+            this.router.navigateByUrl("concejal");
+
+          }
+
+        
       }), (error) => { console.log(error) }
 
   }
