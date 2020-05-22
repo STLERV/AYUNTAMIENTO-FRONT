@@ -5,6 +5,8 @@ import * as rsa from 'rsa-scii-upc/src';
 import * as big from 'bigint-crypto-utils';
 import * as bigconv from 'bigint-conversion';
 import * as HashMap from 'hashmap';
+import { Router } from '@angular/router';
+declare var M: any;
 
 @Component({
   selector: 'app-alcalde',
@@ -16,7 +18,8 @@ export class AlcaldeComponent implements OnInit {
   usuarios: any = new HashMap()
   conectados: any;
 
-
+  
+ listaconectados: string[]
   k: any;
   alcaldeprivatek: rsa.PrivateKey;;
   alcaldepublick: rsa.PublicKey;;
@@ -27,9 +30,11 @@ export class AlcaldeComponent implements OnInit {
   type2: any;
   type5: any;
 
-  constructor(private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService) { }
+  constructor(private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService, private router: Router) { }
 
   async ngOnInit() {
+
+    this.listaconectados = ['hola', 'jj', 'no funiono']
 
     await this.generarclaves();
 
@@ -69,6 +74,15 @@ export class AlcaldeComponent implements OnInit {
       });
 
 
+  }
+
+  Salir(){
+
+
+    this.router.navigateByUrl("login");
+   
+    M.toast({ html: 'Adeeu' })
+    this.usersSocketService.salir();
   }
 
   enviarTTPType1() {

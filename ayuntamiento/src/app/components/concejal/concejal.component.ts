@@ -7,6 +7,7 @@ import * as bigconv from 'bigint-conversion';
 import { ActivatedRoute, Router } from '@angular/router';
 
 
+
 declare var M: any;
 
 @Component({
@@ -19,6 +20,8 @@ declare var M: any;
 
 export class ConcejalComponent implements OnInit {
 
+
+ listaconectados: string[] = [];
   concejalName: any;
   concejalprivatek: rsa.PrivateKey;;
   concejalpublick: rsa.PublicKey;;
@@ -27,13 +30,14 @@ export class ConcejalComponent implements OnInit {
 
   conectados: any;
 
-  constructor(private route: ActivatedRoute, private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService) {
+  constructor(private route: ActivatedRoute, private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService, private router: Router) {
 
   }
 
   async ngOnInit() {
 
     this.concejalName = this.route.snapshot.paramMap.get('name');
+    this.listaconectados;
 
 
 
@@ -50,6 +54,7 @@ export class ConcejalComponent implements OnInit {
 
     this.usersSocketService.whoIsConnected();
 
+    
     this.ttpSocketService.recibirType4()
     .subscribe(data => {
 
@@ -70,8 +75,14 @@ export class ConcejalComponent implements OnInit {
 
       this.conectados = data;
 
-      console.log(this.conectados)
-    
+      console.log(this.conectados);
+
+      this.conectados.forEach(element => {
+        this.listaconectados.push(element)
+      });
+
+   
+      debugger
 
     });
 
@@ -94,6 +105,14 @@ export class ConcejalComponent implements OnInit {
 
     }
   }
+  
+  Salir(){
+    this.usersSocketService.salir();
+    this.router.navigateByUrl("login");
+   
+    M.toast({ html: 'Adeeu' })
+  }
+
   declino() {
 
     if (this.Kshamir == null) {

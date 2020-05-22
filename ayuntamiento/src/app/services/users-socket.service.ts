@@ -64,4 +64,9 @@ export class UsersSocketService {
     return observable;
   }
 
+  salir(){
+
+    this.socket.disconnect();
+  }
+
 }

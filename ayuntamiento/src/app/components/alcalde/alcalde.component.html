@@ -5,9 +5,32 @@
 
 
 
-    <div class="form-group">
+    
      <label for="usr">Mensaje:</label>
      <input type="text" #titleInput class="form-control">
-     </div>
+     <br>
      <button type="button" (click) = "enviarTTPType1()" class="btn btn-primary">Envia!</button>
-   </div>
+     <br>
+     <button type="button" (click) = "Salir()" class="btn btn-primary">Desconectarse!</button>
+
+
+     <div class="col s3">
+      <table class="striped highlight black-text">
+    
+          <th>TRABAJADORES ONLINE</th>
+  
+       
+      
+          <tr *ngFor="let string of listaconectados">
+            <td>{{string}}</td>
+  
+          </tr>
+       
+        </table>
+    </div>
+
+
+</div>
+   
+
+  
