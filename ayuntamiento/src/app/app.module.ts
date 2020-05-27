@@ -9,6 +9,7 @@ import { NgForm } from '@angular/forms';
 import { AlcaldeComponent } from './components/alcalde/alcalde.component';
 import { ConcejalComponent } from './components/concejal/concejal.component';
 
+
 @NgModule({
   declarations: [
     AppComponent,
