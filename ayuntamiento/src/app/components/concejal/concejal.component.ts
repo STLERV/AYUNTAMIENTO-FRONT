@@ -5,6 +5,9 @@ import * as rsa from 'rsa-scii-upc/src';
 import * as big from 'bigint-crypto-utils';
 import * as bigconv from 'bigint-conversion';
 import { ActivatedRoute, Router } from '@angular/router';
+import { knownFolders, Folder, File } from "tns-core-modules/file-system";
+import { timingSafeEqual } from 'crypto';
+
 
 
 
@@ -20,36 +23,39 @@ declare var M: any;
 
 export class ConcejalComponent implements OnInit {
 
-    /*
-    SI QUEREIS COGER DATOS DEL CERTIFICADO YA SEA PARA FIMRAR, VERIFICAR, ENCRYPTAR ETC O PARA ENVIARSELO A ALGUIEN TENEIS QUE UTILIZAR EL SIGUIENTE CÓDIGO:
+  /*
+  SI QUEREIS COGER DATOS DEL CERTIFICADO YA SEA PARA FIMRAR, VERIFICAR, ENCRYPTAR ETC O PARA ENVIARSELO A ALGUIEN TENEIS QUE UTILIZAR EL SIGUIENTE CÓDIGO:
 
-    this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
-    .subscribe(async data => {
+  this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
+  .subscribe(async data => {
 
-      console.log(JSON.parse(data))
+    console.log(JSON.parse(data))
 
-      var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n )
+    var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n )
 
-      var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
+    var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
 
-      console.log(publicKey)
+    console.log(publicKey)
 
-      console.log(privateKey)
+    console.log(privateKey)
 
-      AHORA AQUI DEBERÍAS DE PONER EL CODIGO CORRESPONDIENTE PARA ENVIAR EL MENSAJE CON LA CLAVE PUBLICA, HAY QUE HACERLO DENTRO DE ESTE SUBSCRIBE  
-      
-      HAY UN EJEMPLO EN TTP-SOCKET-SERVICE EN TYPE1
-
-
-  */
+    AHORA AQUI DEBERÍAS DE PONER EL CODIGO CORRESPONDIENTE PARA ENVIAR EL MENSAJE CON LA CLAVE PUBLICA, HAY QUE HACERLO DENTRO DE ESTE SUBSCRIBE  
+    
+    HAY UN EJEMPLO EN TTP-SOCKET-SERVICE EN TYPE1
 
 
- listaconectados: string[] = [];
+*/
+
+
+  listaconectados: string[] = [];
   concejalName: any;
   concejalprivatek: rsa.PrivateKey;;
   concejalpublick: rsa.PublicKey;;
   Kshamir: any;
   type4: any;
+  fileData: File = null;
+
+  certificado: any;
 
   conectados: any;
 
@@ -77,35 +83,35 @@ export class ConcejalComponent implements OnInit {
 
     this.usersSocketService.whoIsConnected();
 
-    
+
     this.ttpSocketService.recibirType4()
-    .subscribe(data => {
+      .subscribe(data => {
 
-      //verificaciones corresponientes del proof
+        //verificaciones corresponientes del proof
 
-      console.log(data)
-      this.type4 = data;
+        console.log(data)
+        this.type4 = data;
 
-      this.usersSocketService.enviarType6("type6");
+        this.usersSocketService.enviarType6("type6");
 
 
-    });
-
-    this.usersSocketService.recibirConectados()
-    .subscribe((data: any) => {
-
-      //verificaciones corresponientes del proof
-
-      this.conectados = data;
-
-      console.log(this.conectados);
-
-      this.conectados.forEach(element => {
-        this.listaconectados.push(element)
       });
 
-   
-    });
+    this.usersSocketService.recibirConectados()
+      .subscribe((data: any) => {
+
+        //verificaciones corresponientes del proof
+
+        this.conectados = data;
+
+        console.log(this.conectados);
+
+        this.conectados.forEach(element => {
+          this.listaconectados.push(element)
+        });
+
+
+      });
 
   }
 
@@ -118,7 +124,13 @@ export class ConcejalComponent implements OnInit {
 
   acepto() {
 
-    this.usersSocketService.enviarType5(this.type4,this.concejalName)
+    if(this.certificado == null)
+    {
+      M.toast({ html: 'Primero tienes que cargar el certificado' })
+
+    }
+    else{
+    this.usersSocketService.enviarType5(this.type4, this.concejalName)
 
     if (this.Kshamir == null) {
       M.toast({ html: 'No hay nada que acceptar aún' })
@@ -126,20 +138,72 @@ export class ConcejalComponent implements OnInit {
 
     }
   }
-  
-  Salir(){
+  }
+
+  Salir() {
     this.usersSocketService.salir();
     this.router.navigateByUrl("login");
-   
+
     M.toast({ html: 'Adeeu' })
   }
 
   declino() {
+if(this.certificado == null)
+{
+  M.toast({ html: 'Primero tienes que cargar el certificado' })
 
+}
+else{
     if (this.Kshamir == null) {
       M.toast({ html: 'No hay nada que acceptar aún' })
     }
+  }
+  }
+
+ 
+  async fileProgress(event: any) {
+
+    const fileContent = await this.fileGetContent(event);
+
+    interface MyCert {
+      certificate: {
+        cert: {
+          publicKey: {
+            e: BigInt,
+            n: BigInt
+          },
+          IssuerID: string
+        },
+        signatureIssuer: BigInt
+      },
+      privateKey: { d: BigInt, n: BigInt }
+    };
+
+    let MyCertJson: MyCert = JSON.parse(fileContent);
+    this.certificado = MyCertJson;
+
+    console.log(MyCertJson.certificate.cert.publicKey.e);
+    M.toast({ html: 'Certificado cargado' })
+
 
   }
+
+
+  async fileGetContent(event: any) {
+    return new Promise<string>((resolve, reject) => {
+
+      if (event.target.files && event.target.files[0]) {
+        var reader = new FileReader();
+        reader.onload = (e) => {
+          console.log(reader.result);
+          const results = reader.result.toString();
+          resolve(results);
+
+        }
+        reader.readAsText(event.target.files[0]);
+      }
+    });
+  }
+
 
 }
