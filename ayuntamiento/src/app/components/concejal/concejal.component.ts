@@ -21,7 +21,7 @@ declare var M: any;
 export class ConcejalComponent implements OnInit {
 
 
- listaconectados: string[] = [];
+  listaconectados: string[] = [];
   concejalName: any;
   concejalprivatek: rsa.PrivateKey;;
   concejalpublick: rsa.PublicKey;;
