@@ -1,11 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { TtpSocketService } from '../../services/ttp-socket.service'
 import { UsersSocketService } from '../../services/users-socket.service'
-import * as rsa from 'rsa-scii-upc/src';
+import * as rsa from 'rsa-scii-upc';
 import * as big from 'bigint-crypto-utils';
 import * as bigconv from 'bigint-conversion';
 import * as HashMap from 'hashmap';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import * as fs from 'fs';
+
 declare var M: any;
 
 @Component({
@@ -15,14 +18,36 @@ declare var M: any;
 })
 export class AlcaldeComponent implements OnInit {
 
+    /*
+    SI QUEREIS COGER DATOS DEL CERTIFICADO YA SEA PARA FIMRAR, VERIFICAR, ENCRYPTAR ETC O PARA ENVIARSELO A ALGUIEN TENEIS QUE UTILIZAR EL SIGUIENTE CÓDIGO:
+
+    this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
+    .subscribe(async data => {
+
+      console.log(JSON.parse(data))
+
+      var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n )
+
+      var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
+
+      console.log(publicKey)
+
+      console.log(privateKey)
+
+      AHORA AQUI DEBERÍAS DE PONER EL CODIGO CORRESPONDIENTE PARA ENVIAR EL MENSAJE CON LA CLAVE PUBLICA, HAY QUE HACERLO DENTRO DE ESTE SUBSCRIBE  
+      
+      HAY UN EJEMPLO EN TTP-SOCKET-SERVICE EN TYPE1
+
+
+  */
+
   usuarios: any = new HashMap()
   conectados: any;
 
-  
- listaconectados: string[]
+  certificado: any;
+
+  listaconectados: string[]
   k: any;
-  alcaldeprivatek: rsa.PrivateKey;;
-  alcaldepublick: rsa.PublicKey;;
   iv: any;
   key: any;
   Keyexport: any;
@@ -30,13 +55,13 @@ export class AlcaldeComponent implements OnInit {
   type2: any;
   type5: any;
 
-  constructor(private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService, private router: Router) { }
+  constructor(private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService, private router: Router, private http: HttpClient) { }
 
   async ngOnInit() {
 
     this.listaconectados = ['hola', 'jj', 'no funiono']
 
-    await this.generarclaves();
+    this.test();
 
     this.ttpSocketService.setupSocketConnection();
     // this.usersSocketService.setupSocketConnection();
@@ -76,11 +101,11 @@ export class AlcaldeComponent implements OnInit {
 
   }
 
-  Salir(){
+  Salir() {
 
 
     this.router.navigateByUrl("login");
-   
+
     M.toast({ html: 'Adeeu' })
     this.usersSocketService.salir();
   }
@@ -126,12 +151,29 @@ export class AlcaldeComponent implements OnInit {
 
   }
 
+  test(){
 
-  async generarclaves() {
+    this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
+    .subscribe(async data => {
 
-    const { publicKey, privateKey } = await rsa.generateRandomKeys(3072);
-    this.alcaldeprivatek = privateKey;
-    this.alcaldepublick = publicKey;
+      console.log(JSON.parse(data))
+
+      var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n )
+
+      var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
+
+      console.log(publicKey)
+
+      console.log(privateKey)
+
+      publicKey.verify("ejemplo")
+
+      
+    });
   }
+
+
+ 
+
 
 }
