@@ -19,6 +19,8 @@ declare var M: any;
 })
 export class AlcaldeComponent implements OnInit {
 
+
+  
     /*
     SI QUEREIS COGER DATOS DEL CERTIFICADO YA SEA PARA FIMRAR, VERIFICAR, ENCRYPTAR ETC O PARA ENVIARSELO A ALGUIEN TENEIS QUE UTILIZAR EL SIGUIENTE CÓDIGO:
 
@@ -45,9 +47,8 @@ export class AlcaldeComponent implements OnInit {
   usuarios: any = new HashMap()
   conectados: any;
 
-  certificado: any;
 
-  listaconectados: string[]
+  listaconectados: string[] = [];
   k: any;
   iv: any;
   key: any;
@@ -60,13 +61,16 @@ export class AlcaldeComponent implements OnInit {
   type2: any;
   type5: any;
 
+  fileData: File = null;
+  certificado: any;
+
   constructor(private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService, private router: Router, private http: HttpClient) { }
 
   async ngOnInit() {
 
-    this.listaconectados = ['hola', 'jj', 'no funiono']
 
-    this.test();
+    this.listaconectados;
+
 
     this.ttpSocketService.setupSocketConnection();
     // this.usersSocketService.setupSocketConnection();
@@ -100,6 +104,9 @@ export class AlcaldeComponent implements OnInit {
 
         console.log(this.conectados)
 
+        this.conectados.forEach(element => {
+          this.listaconectados.push(element)
+        });
 
       });
 
@@ -116,11 +123,23 @@ export class AlcaldeComponent implements OnInit {
   }
 
   enviarTTPType1() {
-    this.ttpSocketService.enviarType1("type1", this.certificado, this.Keyexport)
+
+    if(this.certificado == null)
+    {    M.toast({ html: 'Tienes que cargar el certificado primero' })
+  }
+    else {
+      this.ttpSocketService.enviarType1("type1", this.certificado, this.Keyexport)
+    }
   }
 
   async enviarPeticion() {
 
+    if(this.listaconectados.length < 5)
+    {
+        M.toast({ html: 'Espera a que todo el mundo esté conectado' })
+
+    }
+    else {
 
     var k;
     var encrypt;
@@ -155,6 +174,7 @@ export class AlcaldeComponent implements OnInit {
     this.enviarTTPType1();
 
   }
+}
 
   test(){
 
@@ -176,6 +196,54 @@ export class AlcaldeComponent implements OnInit {
       
     });
   }
+
+  //recoger y guardar el certificado
+
+
+  async fileProgress(event: any) {
+
+    const fileContent = await this.fileGetContent(event);
+
+    interface MyCert {
+      certificate: {
+        cert: {
+          publicKey: {
+            e: BigInt,
+            n: BigInt
+          },
+          IssuerID: string
+        },
+        signatureIssuer: BigInt
+      },
+      privateKey: { d: BigInt, n: BigInt }
+    };
+
+    let MyCertJson: MyCert = JSON.parse(fileContent);
+    this.certificado = MyCertJson;
+
+    console.log(MyCertJson.certificate.cert.publicKey.e);
+    M.toast({ html: 'Certificado cargado' })
+
+
+  }
+
+
+  async fileGetContent(event: any) {
+    return new Promise<string>((resolve, reject) => {
+
+      if (event.target.files && event.target.files[0]) {
+        var reader = new FileReader();
+        reader.onload = (e) => {
+          console.log(reader.result);
+          const results = reader.result.toString();
+          resolve(results);
+
+        }
+        reader.readAsText(event.target.files[0]);
+      }
+    });
+  }
+
 
 
 

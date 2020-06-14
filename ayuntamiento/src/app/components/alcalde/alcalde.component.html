@@ -21,16 +21,19 @@
   
        
       
-          <tr *ngFor="let string of listaconectados">
+          <tr *ngFor="let string of conectados ">
             <td>{{string}}</td>
   
           </tr>
        
         </table>
     </div>
-
+    <th> Introduce tu certificado:</th>
+    <div class="form-group">
+      
+      <input type="file" name="image" (change)="fileProgress($event)" />
+    </div>
 
 </div>
    
 
-  

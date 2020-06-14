@@ -53,16 +53,14 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
 
   
 
-  enviarType1(mensaje, certificado, Keyexport) {
+  async enviarType1(mensaje, certificado, Keyexport) {
 
-    this.http.get('assets/certs/AlcaldeCert.json', { responseType: 'text' })
-      .subscribe(async data => {
+  
 
-        console.log(JSON.parse(data))
+        // var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n)
+        var publicKey = new rsa.PublicKey(certificado.certificate.cert.publicKey.e, certificado.certificate.cert.publicKey.n)
 
-        var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n)
-
-        var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, JSON.parse(data).privateKey.n)
+        var privateKey = new rsa.PrivateKey(certificado.privateKey.d, publicKey)
 
         console.log(publicKey)
 
@@ -71,7 +69,8 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
         var body = { src: 'Alcalde', TTP: 'TTP', dest: 'Concejales', msg: bigconv.bufToHex(Keyexport), type : 1}
 
         const hash  = await sha.digest(body, 'SHA-256'); 
-        const pko = bigconv.bigintToHex(privateKey.sign(bigconv.textToBigint(hash)));
+        const convertHash = bigconv.textToBigint(hash);
+        const pko = bigconv.bigintToHex(privateKey.sign(convertHash));
         
 
         const bodyToEmit = {
@@ -81,7 +80,7 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
 
         this.socket.emit('alcalde-to-ttp-type1', bodyToEmit)
 
-      })
+      
   }
 
   disconnect() {
