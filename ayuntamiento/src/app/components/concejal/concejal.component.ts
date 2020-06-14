@@ -24,6 +24,7 @@ export class ConcejalComponent implements OnInit {
     SI QUEREIS COGER DATOS DEL CERTIFICADO YA SEA PARA FIMRAR, VERIFICAR, ENCRYPTAR ETC O PARA ENVIARSELO A ALGUIEN TENEIS QUE UTILIZAR EL SIGUIENTE CÓDIGO:
 
     this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
+    
     .subscribe(async data => {
 
       console.log(JSON.parse(data))

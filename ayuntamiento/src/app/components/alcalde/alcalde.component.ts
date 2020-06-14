@@ -8,6 +8,7 @@ import * as HashMap from 'hashmap';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import * as fs from 'fs';
+import * as sha from 'object-sha';
 
 declare var M: any;
 
@@ -51,6 +52,10 @@ export class AlcaldeComponent implements OnInit {
   iv: any;
   key: any;
   Keyexport: any;
+  publicKey: any;
+  ttpPublicKey:  rsa.PublicKey;
+  privateKey: any;
+  TTP_PublicKey: any; //////////////////////////no es nada
 
   type2: any;
   type5: any;
@@ -111,10 +116,10 @@ export class AlcaldeComponent implements OnInit {
   }
 
   enviarTTPType1() {
-    this.ttpSocketService.enviarType1("type1")
+    this.ttpSocketService.enviarType1("type1", this.certificado, this.Keyexport)
   }
 
-  async enviarPeticion(mesnaje: string) {
+  async enviarPeticion() {
 
 
     var k;
@@ -142,12 +147,12 @@ export class AlcaldeComponent implements OnInit {
     console.log(k);
     this.key = k;
 
-    const exportKeyData = await crypto.subtle.exportKey("jwk", k)
+    const exportKeyData = await crypto.subtle.exportKey("raw", k)
 
     this.Keyexport = exportKeyData;
 
 
-
+    this.enviarTTPType1();
 
   }
 
@@ -167,13 +172,54 @@ export class AlcaldeComponent implements OnInit {
       console.log(privateKey)
 
       publicKey.verify("ejemplo")
-
+    
       
     });
   }
 
 
+
+//   async enviarK(){
+//     var midate = new Date();
+//     var body = { src: 'A', TTTP: 'TTP', dest: 'B', msg: this.Keyexport, type : 1}
+
+    
+//     const hash = await  this.hashbody(body);
+//     const pko = bigconv.bigintToHex(this.privateKey.sign(bigconv.textToBigint(hash)));
+
+//     this.ttpSocketService.enviarmensajek({body, pko})
+
+    
+// .subscribe(async (res: any) => {
+//   const hashBody = await sha.digest(res.body, 'SHA-256');
+ 
+//   if (hashBody == bigconv.bigintToText(this.ttpPublicKey.verify(bigconv.hexToBigint(res.pkp)))) {
+//     console.log(res.body)
+
+    
+  
+//   } else {
+//     console.log("ui")
+
+//   }
+// });
+
+//   }
+
+  async hashbody(body){
+
+    const hash  = await sha.digest(body, 'SHA-256'); 
+    return hash;
+  }
+
+}
+
+
+
+
+
+
+
  
 
 
-}

@@ -6,6 +6,8 @@ import { HttpClient } from '@angular/common/http';
 import * as rsa from 'rsa-scii-upc';
 import * as big from 'bigint-crypto-utils';
 import * as bigconv from 'bigint-conversion';
+import * as sha from 'object-sha';
+
 
 
 @Injectable({
@@ -49,7 +51,9 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
 
   }
 
-  enviarType1(mensaje) {
+  
+
+  enviarType1(mensaje, certificado, Keyexport) {
 
     this.http.get('assets/certs/AlcaldeCert.json', { responseType: 'text' })
       .subscribe(async data => {
@@ -58,24 +62,26 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
 
         var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n)
 
-        var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
+        var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, JSON.parse(data).privateKey.n)
 
         console.log(publicKey)
 
         console.log(privateKey)
 
-        var test = {
-          mensaje: mensaje,
-          certAlcalde: JSON.parse(data).certificate
+        var body = { src: 'Alcalde', TTP: 'TTP', dest: 'Concejales', msg: bigconv.bufToHex(Keyexport), type : 1}
+
+        const hash  = await sha.digest(body, 'SHA-256'); 
+        const pko = bigconv.bigintToHex(privateKey.sign(bigconv.textToBigint(hash)));
+        
+
+        const bodyToEmit = {
+          body: body,
+          pko: pko
         }
 
-        this.socket.emit('alcalde-to-ttp-type1', test)
-
+        this.socket.emit('alcalde-to-ttp-type1', bodyToEmit)
 
       })
-
-
-
   }
 
   disconnect() {
@@ -106,7 +112,29 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
     return observable;
   }
 
+//   enviarmensajek(){
 
+//     let observable = new Observable(observer => {
+//       this.socket.on('alcalde-to-ttp-type0', (data) => {
+//         observer.next(data);
+//       });
+//       return () => {
+//         this.socket.disconnect();
+//       };
+//     })
+//     return observable;
+
+
+//     return this.http.post(this.URLTTP + '/mensaje3', { mensaje });
+  
+// } 
+
+
+
+
+dameClaveTTP() {
+  
+}
 
 
 }
