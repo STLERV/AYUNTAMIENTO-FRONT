@@ -22,6 +22,7 @@
     "bigint-conversion": "^2.1.10",
     "bigint-crypto-utils": "3.0.6",
     "hashmap": "^2.4.0",
+    "object-sha": "^2.0.5",
     "rsa-scii-upc": "^1.0.1",
     "rxjs": "~6.5.4",
     "sha": "^3.0.0",

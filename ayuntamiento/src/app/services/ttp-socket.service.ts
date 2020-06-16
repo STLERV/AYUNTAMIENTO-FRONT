@@ -51,36 +51,33 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
 
   }
 
-  
+
 
   async enviarType1(mensaje, certificado, Keyexport) {
 
-  
 
-        // var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n)
-        var publicKey = new rsa.PublicKey(certificado.certificate.cert.publicKey.e, certificado.certificate.cert.publicKey.n)
 
-        var privateKey = new rsa.PrivateKey(certificado.privateKey.d, publicKey)
+    // var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n)
+    var publicKey = new rsa.PublicKey(bigconv.hexToBigint(certificado.certificate.cert.publicKey.e), bigconv.hexToBigint(certificado.certificate.cert.publicKey.n))
+    var privateKey = new rsa.PrivateKey(bigconv.hexToBigint(certificado.privateKey.d), publicKey)
+    var ts = new Date();
 
-        console.log(publicKey)
+    var body = { type: '1', src: 'Alcalde', TTP: 'TTP', dest: 'Concejales', msg: bigconv.bufToHex(Keyexport), ts: ts.toUTCString() }
 
-        console.log(privateKey)
+    const digest = await digestHash(body);
+    const pko = bigconv.bigintToHex(privateKey.sign(bigconv.textToBigint(digest)));
 
-        var body = { src: 'Alcalde', TTP: 'TTP', dest: 'Concejales', msg: bigconv.bufToHex(Keyexport), type : 1}
 
-        const hash  = await sha.digest(body, 'SHA-256'); 
-        const convertHash = bigconv.textToBigint(hash);
-        const pko = bigconv.bigintToHex(privateKey.sign(convertHash));
-        
+    const bodyToEmit = {
+      body: body,
+      pko: pko,
+      cert: certificado.certificate
+    }
 
-        const bodyToEmit = {
-          body: body,
-          pko: pko
-        }
 
-        this.socket.emit('alcalde-to-ttp-type1', bodyToEmit)
+    this.socket.emit('alcalde-to-ttp-type1', bodyToEmit)
 
-      
+
   }
 
   disconnect() {
@@ -111,29 +108,34 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
     return observable;
   }
 
-//   enviarmensajek(){
+  //   enviarmensajek(){
 
-//     let observable = new Observable(observer => {
-//       this.socket.on('alcalde-to-ttp-type0', (data) => {
-//         observer.next(data);
-//       });
-//       return () => {
-//         this.socket.disconnect();
-//       };
-//     })
-//     return observable;
-
-
-//     return this.http.post(this.URLTTP + '/mensaje3', { mensaje });
-  
-// } 
+  //     let observable = new Observable(observer => {
+  //       this.socket.on('alcalde-to-ttp-type0', (data) => {
+  //         observer.next(data);
+  //       });
+  //       return () => {
+  //         this.socket.disconnect();
+  //       };
+  //     })
+  //     return observable;
 
 
+  //     return this.http.post(this.URLTTP + '/mensaje3', { mensaje });
+
+  // } 
 
 
-dameClaveTTP() {
-  
+
+
+  dameClaveTTP() {
+
+  }
+
+
 }
 
-
+async function digestHash(body) {
+  const d = await sha.digest(body, 'SHA-256');
+  return d;
 }
