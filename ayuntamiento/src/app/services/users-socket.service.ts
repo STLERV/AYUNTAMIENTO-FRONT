@@ -25,14 +25,10 @@ export class UsersSocketService {
     this.socket.emit('conectados');
   }
 
-  enviarType5(mensaje, concejal) {
+  enviarType5(mensaje) {
 
-    var newMensaje = {
-      name: concejal,
-      clave: mensaje
-    }
 
-    this.socket.emit('concejal-to-alcalde-type5', newMensaje)
+    this.socket.emit('concejal-to-alcalde-type5', mensaje)
   }
 
   enviarType6(mensaje) {

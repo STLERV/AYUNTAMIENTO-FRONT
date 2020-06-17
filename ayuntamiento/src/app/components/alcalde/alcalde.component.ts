@@ -9,6 +9,9 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import * as fs from 'fs';
 import * as sha from 'object-sha';
+import { LoginService } from 'src/app/services/login.service';
+import { Console } from 'console';
+import * as sss from 'shamirs-secret-sharing-ts';
 
 declare var M: any;
 
@@ -49,6 +52,8 @@ export class AlcaldeComponent implements OnInit {
 
 
   listaconectados: string[] = [];
+  clavesShamir_d: any[] = [];
+  clavesShamir_n: any[] = [];
   k: any;
   iv: any;
   key: any;
@@ -56,7 +61,9 @@ export class AlcaldeComponent implements OnInit {
   publicKey: any;
   ttpPublicKey: rsa.PublicKey;
   privateKey: any;
+  aytoCert: any;
   TTP_PublicKey: any; //////////////////////////no es nada
+  concejalPublicKey: any;
 
   type2: any;
   type5: any;
@@ -64,12 +71,14 @@ export class AlcaldeComponent implements OnInit {
   fileData: File = null;
   certificado: any;
 
-  constructor(private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService, private router: Router, private http: HttpClient) { }
+  constructor(private loginService: LoginService, private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService, private router: Router, private http: HttpClient) { }
 
   async ngOnInit() {
 
 
     this.listaconectados;
+
+
 
 
     this.ttpSocketService.setupSocketConnection();
@@ -83,6 +92,14 @@ export class AlcaldeComponent implements OnInit {
     this.usersSocketService.userIdentify("alcalde");
 
     this.usersSocketService.whoIsConnected();
+
+    this.loginService.getAytoCert()
+      .subscribe(data => {
+        this.aytoCert = data;
+        console.log(this.aytoCert)
+      })
+
+
 
 
     this.ttpSocketService.recibirType2()
@@ -99,16 +116,55 @@ export class AlcaldeComponent implements OnInit {
         } else {
           if (await this.verifyHash(this.TTP_PublicKey, this.type2.body, this.type2.pkp) == false) {
             console.log("No se ha podido verificar al emisor del mensaje")
-          }else{
+          } else {
             console.log("El mensaje ha sido recibido correctamente por la TTP")
           }
         }
       });
 
     this.usersSocketService.recibirType5()
-      .subscribe(data => {
-        console.log(data)
+      .subscribe(async (data) => {
+
         this.type5 = data;
+
+        this.concejalPublicKey = await this.extractPubKFromCert(this.type5.cert, this.aytoCert)
+
+        if (this.concejalPublicKey === null) {
+          console.log("No se ha podido verificar que el Issuer haya emitido el certificado correspondiente")
+
+        } else {
+          if (await this.verifyHash(this.concejalPublicKey, this.type5.body, this.type5.po) === false) {
+            console.log("No se ha podido verificar al emisor del mensaje")
+          } else {
+            console.log(this.type5.body.msg.d)
+            console.log(this.type5.body.msg.n)
+
+            var shamirKey_d;
+            var shamirKey_n;
+
+            await this.decrypt(this.key, this.type5.body.msg.d).then(function (plaintext) {
+              console.log(plaintext)
+              shamirKey_d = plaintext
+
+            });
+
+            await this.decrypt(this.key, this.type5.body.msg.n).then(function (plaintext) {
+              console.log(plaintext)
+              shamirKey_n = plaintext
+
+            });
+
+            this.clavesShamir_d.push(bigconv.bufToText(shamirKey_d))
+            this.clavesShamir_n.push(bigconv.bufToText(shamirKey_n))
+
+
+            console.log("d", this.clavesShamir_d)
+            console.log("n", this.clavesShamir_n)
+
+
+          }
+        }
+
       });
 
     this.usersSocketService.recibirConectados()
@@ -127,12 +183,12 @@ export class AlcaldeComponent implements OnInit {
 
   }
 
-  Salir() {
+  salir() {
 
 
     this.router.navigateByUrl("login");
 
-    M.toast({ html: 'Adeeu' })
+    M.toast({ html: 'Adeu' })
     this.usersSocketService.salir();
   }
 
@@ -146,6 +202,7 @@ export class AlcaldeComponent implements OnInit {
     }
   }
 
+
   async enviarPeticion() {
 
     if (this.listaconectados.length < 5) {
@@ -155,14 +212,8 @@ export class AlcaldeComponent implements OnInit {
     else {
 
       var k;
-      var encrypt;
       var iv = window.crypto.getRandomValues(new Uint8Array(16));
       this.iv = iv;
-      var des;
-
-      var res: any;
-
-
 
       await crypto.subtle.generateKey({
         name: "AES-CBC",
@@ -186,26 +237,40 @@ export class AlcaldeComponent implements OnInit {
     }
   }
 
-  test() {
+  async decrypt(key, ciphertext) {
+    return await crypto.subtle.decrypt({
+      name: "AES-CBC",
+      iv: bigconv.hexToBuf(ciphertext.iv)
+    },
+      key,
+      bigconv.hexToBuf(ciphertext.encryptedData))
 
-    this.http.get('assets/certs/AlcaldeCert.json', { responseType: 'text' })
-      .subscribe(async data => {
-
-        console.log(JSON.parse(data))
-
-        var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n)
-
-        var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
-
-        console.log(publicKey)
-
-        console.log(privateKey)
-
-        publicKey.verify("ejemplo")
-
-
-      });
   }
+
+  firmar() {
+
+    var shamir_d_hex;
+    var shamir_n_hex;
+
+    if (this.clavesShamir_d.length >= 2 && this.clavesShamir_n.length >= 2) {
+      var shamir_d_buffer = sss.combine(this.clavesShamir_d)
+      var shamir_n_buffer = sss.combine(this.clavesShamir_n)
+
+      shamir_d_hex = bigconv.bufToText(shamir_d_buffer)
+      shamir_n_hex = bigconv.bufToText(shamir_n_buffer)
+
+    } else {
+      console.log("No se han llegado al mínimo de aceptaciones")
+    }
+
+    var decreto_publicKey = new rsa.PublicKey(bigconv.hexToBigint("10001"), bigconv.hexToBigint(shamir_n_hex))
+    var decreto_privateKey = new rsa.PrivateKey(bigconv.hexToBigint(shamir_d_hex), decreto_publicKey)
+    console.log(decreto_publicKey)
+    console.log(decreto_privateKey)
+
+  }
+
+
 
   //recoger y guardar el certificado
 
@@ -275,11 +340,11 @@ export class AlcaldeComponent implements OnInit {
     var verify = false;
 
     if (hashBody == bigconv.bigintToText(PublicKey.verify(bigconv.hexToBigint(signature)))) {
-        verify = true
+      verify = true
     }
 
     return verify
-}
+  }
 
 
 

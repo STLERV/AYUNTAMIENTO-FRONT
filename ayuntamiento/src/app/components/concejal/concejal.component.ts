@@ -53,15 +53,14 @@ export class ConcejalComponent implements OnInit {
   concejalName: any;
   concejalprivatek: rsa.PrivateKey;;
   concejalpublick: rsa.PublicKey;;
-  Kshamir: any;
-  type3: any;
+  type3: any = null;
   fileData: File = null;
 
   certificado: any;
 
   conectados: any;
 
-  TTP_PublicKey:any;
+  TTP_PublicKey: any;
 
   constructor(private route: ActivatedRoute, private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService, private router: Router) {
 
@@ -75,7 +74,6 @@ export class ConcejalComponent implements OnInit {
 
 
 
-    this.Kshamir = null;
     await this.generarclaves();
 
 
@@ -108,7 +106,7 @@ export class ConcejalComponent implements OnInit {
             console.log("No se ha podido verificar al emisor del mensaje")
             this.type3 = null;
 
-          }else{
+          } else {
             console.log("He recibido mi parte de la clave privada del Decreto solicitado para firmar por parte del Alcalde")
 
             this.ttpSocketService.enviarType4(this.concejalName, this.certificado)
@@ -145,20 +143,42 @@ export class ConcejalComponent implements OnInit {
     this.concejalpublick = publicKey;
   }
 
-  acepto() {
+  async acepto() {
 
     if (this.certificado == null) {
       M.toast({ html: 'Primero tienes que cargar el certificado' })
 
+    } else if (this.type3 === null) {
+      M.toast({ html: 'Aún no has recibido ninguna clave' })
+
     }
     else {
-      this.usersSocketService.enviarType5(this.type3, this.concejalName)
 
-      if (this.Kshamir == null) {
-        M.toast({ html: 'No hay nada que acceptar aún' })
+      var ts = new Date();
+
+      var publicKey = new rsa.PublicKey(bigconv.hexToBigint(this.certificado.certificate.cert.publicKey.e), bigconv.hexToBigint(this.certificado.certificate.cert.publicKey.n))
+      var privateKey = new rsa.PrivateKey(bigconv.hexToBigint(this.certificado.privateKey.d), publicKey)
 
 
+      var body = {
+        type: '5',
+        src: this.concejalName,
+        dest: 'Alcalde',
+        msg: this.type3.body.msg,
+        ts: ts.toUTCString()
       }
+
+      const digest = await this.digestHash(body);
+      const po = bigconv.bigintToHex(privateKey.sign(bigconv.textToBigint(digest)));
+
+      const bodyToEmit = {
+        body: body,
+        po: po,
+        cert: this.certificado.certificate
+      }
+
+      this.usersSocketService.enviarType5(bodyToEmit)
+
     }
   }
 
@@ -175,7 +195,7 @@ export class ConcejalComponent implements OnInit {
 
     }
     else {
-      if (this.Kshamir == null) {
+      if (this.type3 == null) {
         M.toast({ html: 'No hay nada que acceptar aún' })
       }
     }
@@ -230,11 +250,11 @@ export class ConcejalComponent implements OnInit {
     var verify = false;
 
     if (hashBody == bigconv.bigintToText(PublicKey.verify(bigconv.hexToBigint(signature)))) {
-        verify = true
+      verify = true
     }
 
     return verify
-}
+  }
 
 
   async fileGetContent(event: any) {
@@ -251,6 +271,11 @@ export class ConcejalComponent implements OnInit {
         reader.readAsText(event.target.files[0]);
       }
     });
+  }
+
+  async digestHash(body) {
+    const d = await sha.digest(body, 'SHA-256');
+    return d;
   }
 
 

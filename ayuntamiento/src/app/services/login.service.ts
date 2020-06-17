@@ -22,6 +22,10 @@ export class LoginService {
     }
     return this.http.post(this.URL_API + '/login ', user);
   }
+
+  getAytoCert(){
+    return this.http.get(this.URL_API + '/AytoCert')
+  }
       
   }
 
