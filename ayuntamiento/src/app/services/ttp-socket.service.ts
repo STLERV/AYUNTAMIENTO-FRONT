@@ -53,7 +53,7 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
 
 
 
-  async enviarType1(mensaje, certificado, Keyexport) {
+  async enviarType1(certificado, Keyexport) {
 
 
 
@@ -80,6 +80,33 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
 
   }
 
+  async enviarType4(concejal, certificado) {
+
+
+
+    // var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n)
+    var publicKey = new rsa.PublicKey(bigconv.hexToBigint(certificado.certificate.cert.publicKey.e), bigconv.hexToBigint(certificado.certificate.cert.publicKey.n))
+    var privateKey = new rsa.PrivateKey(bigconv.hexToBigint(certificado.privateKey.d), publicKey)
+    var ts = new Date();
+
+    var body = { type: '4', src: 'Alcalde', TTP: 'TTP', dest: concejal, ts: ts.toUTCString() }
+
+    const digest = await digestHash(body);
+    const pr = bigconv.bigintToHex(privateKey.sign(bigconv.textToBigint(digest)));
+
+
+    const bodyToEmit = {
+      body: body,
+      pr: pr,
+      cert: certificado.certificate
+    }
+
+
+    this.socket.emit('concejal-to-ttp-type4', bodyToEmit)
+
+
+  }
+
   disconnect() {
     this.socket.disconnect();
   }
@@ -96,9 +123,9 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
     return observable;
   }
 
-  recibirType4() {
+  recibirType3() {
     let observable = new Observable(observer => {
-      this.socket.on('ttp-to-concejal-type4', (data) => {
+      this.socket.on('ttp-to-concejal-type3', (data) => {
         observer.next(data);
       });
       return () => {

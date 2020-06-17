@@ -142,7 +142,7 @@ export class AlcaldeComponent implements OnInit {
       M.toast({ html: 'Tienes que cargar el certificado primero' })
     }
     else {
-      this.ttpSocketService.enviarType1("type1", this.certificado, this.Keyexport)
+      this.ttpSocketService.enviarType1(this.certificado, this.Keyexport)
     }
   }
 

@@ -7,6 +7,8 @@ import * as bigconv from 'bigint-conversion';
 import { ActivatedRoute, Router } from '@angular/router';
 import { knownFolders, Folder, File } from "tns-core-modules/file-system";
 import { timingSafeEqual } from 'crypto';
+import * as fs from 'fs';
+import * as sha from 'object-sha';
 
 
 
@@ -52,12 +54,14 @@ export class ConcejalComponent implements OnInit {
   concejalprivatek: rsa.PrivateKey;;
   concejalpublick: rsa.PublicKey;;
   Kshamir: any;
-  type4: any;
+  type3: any;
   fileData: File = null;
 
   certificado: any;
 
   conectados: any;
+
+  TTP_PublicKey:any;
 
   constructor(private route: ActivatedRoute, private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService, private router: Router) {
 
@@ -84,15 +88,34 @@ export class ConcejalComponent implements OnInit {
     this.usersSocketService.whoIsConnected();
 
 
-    this.ttpSocketService.recibirType4()
-      .subscribe(data => {
+
+    this.ttpSocketService.recibirType3()
+      .subscribe(async data => {
 
         //verificaciones corresponientes del proof
 
-        console.log(data)
-        this.type4 = data;
-
         this.usersSocketService.enviarType6("type6");
+
+        this.type3 = data;
+        this.TTP_PublicKey = await this.extractPubKFromCert(this.type3.cert, this.type3.cert)
+
+
+        if (this.TTP_PublicKey === null) {
+          console.log("No se ha podido verificar que el Issuer haya emitido el certificado correspondiente")
+          this.type3 = null;
+        } else {
+          if (await this.verifyHash(this.TTP_PublicKey, this.type3.body, this.type3.po) == false) {
+            console.log("No se ha podido verificar al emisor del mensaje")
+            this.type3 = null;
+
+          }else{
+            console.log("He recibido mi parte de la clave privada del Decreto solicitado para firmar por parte del Alcalde")
+
+            this.ttpSocketService.enviarType4(this.concejalName, this.certificado)
+
+          }
+        }
+
 
 
       });
@@ -124,20 +147,19 @@ export class ConcejalComponent implements OnInit {
 
   acepto() {
 
-    if(this.certificado == null)
-    {
+    if (this.certificado == null) {
       M.toast({ html: 'Primero tienes que cargar el certificado' })
 
     }
-    else{
-    this.usersSocketService.enviarType5(this.type4, this.concejalName)
+    else {
+      this.usersSocketService.enviarType5(this.type3, this.concejalName)
 
-    if (this.Kshamir == null) {
-      M.toast({ html: 'No hay nada que acceptar aún' })
+      if (this.Kshamir == null) {
+        M.toast({ html: 'No hay nada que acceptar aún' })
 
 
+      }
     }
-  }
   }
 
   Salir() {
@@ -148,19 +170,18 @@ export class ConcejalComponent implements OnInit {
   }
 
   declino() {
-if(this.certificado == null)
-{
-  M.toast({ html: 'Primero tienes que cargar el certificado' })
+    if (this.certificado == null) {
+      M.toast({ html: 'Primero tienes que cargar el certificado' })
 
-}
-else{
-    if (this.Kshamir == null) {
-      M.toast({ html: 'No hay nada que acceptar aún' })
+    }
+    else {
+      if (this.Kshamir == null) {
+        M.toast({ html: 'No hay nada que acceptar aún' })
+      }
     }
   }
-  }
 
- 
+
   async fileProgress(event: any) {
 
     const fileContent = await this.fileGetContent(event);
@@ -187,6 +208,33 @@ else{
 
 
   }
+
+  async extractPubKFromCert(cert, issuerCert) {
+    const hashBody = await sha.digest(cert.cert, 'SHA-256')
+    var issuerPublicKey = new rsa.PublicKey(bigconv.hexToBigint(issuerCert.cert.publicKey.e), bigconv.hexToBigint(issuerCert.cert.publicKey.n))
+
+    console.log(issuerCert)
+
+    if (hashBody == bigconv.bigintToText(issuerPublicKey.verify(bigconv.hexToBigint(cert.signatureIssuer)))) {
+
+      return new rsa.PublicKey(bigconv.hexToBigint(cert.cert.publicKey.e), bigconv.hexToBigint(cert.cert.publicKey.n))
+
+    } else {
+      return null
+    }
+
+  }
+
+  async verifyHash(PublicKey, body, signature) {
+    const hashBody = await sha.digest(body, 'SHA-256')
+    var verify = false;
+
+    if (hashBody == bigconv.bigintToText(PublicKey.verify(bigconv.hexToBigint(signature)))) {
+        verify = true
+    }
+
+    return verify
+}
 
 
   async fileGetContent(event: any) {
