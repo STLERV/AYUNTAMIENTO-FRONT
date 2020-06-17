@@ -20,29 +20,29 @@ declare var M: any;
 export class AlcaldeComponent implements OnInit {
 
 
-  
-    /*
-    SI QUEREIS COGER DATOS DEL CERTIFICADO YA SEA PARA FIMRAR, VERIFICAR, ENCRYPTAR ETC O PARA ENVIARSELO A ALGUIEN TENEIS QUE UTILIZAR EL SIGUIENTE CÓDIGO:
 
-    this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
-    .subscribe(async data => {
+  /*
+  SI QUEREIS COGER DATOS DEL CERTIFICADO YA SEA PARA FIMRAR, VERIFICAR, ENCRYPTAR ETC O PARA ENVIARSELO A ALGUIEN TENEIS QUE UTILIZAR EL SIGUIENTE CÓDIGO:
 
-      console.log(JSON.parse(data))
+  this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
+  .subscribe(async data => {
 
-      var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n )
+    console.log(JSON.parse(data))
 
-      var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
+    var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n )
 
-      console.log(publicKey)
+    var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
 
-      console.log(privateKey)
+    console.log(publicKey)
 
-      AHORA AQUI DEBERÍAS DE PONER EL CODIGO CORRESPONDIENTE PARA ENVIAR EL MENSAJE CON LA CLAVE PUBLICA, HAY QUE HACERLO DENTRO DE ESTE SUBSCRIBE  
-      
-      HAY UN EJEMPLO EN TTP-SOCKET-SERVICE EN TYPE1
+    console.log(privateKey)
+
+    AHORA AQUI DEBERÍAS DE PONER EL CODIGO CORRESPONDIENTE PARA ENVIAR EL MENSAJE CON LA CLAVE PUBLICA, HAY QUE HACERLO DENTRO DE ESTE SUBSCRIBE  
+    
+    HAY UN EJEMPLO EN TTP-SOCKET-SERVICE EN TYPE1
 
 
-  */
+*/
 
   usuarios: any = new HashMap()
   conectados: any;
@@ -54,7 +54,7 @@ export class AlcaldeComponent implements OnInit {
   key: any;
   Keyexport: any;
   publicKey: any;
-  ttpPublicKey:  rsa.PublicKey;
+  ttpPublicKey: rsa.PublicKey;
   privateKey: any;
   TTP_PublicKey: any; //////////////////////////no es nada
 
@@ -86,9 +86,23 @@ export class AlcaldeComponent implements OnInit {
 
 
     this.ttpSocketService.recibirType2()
-      .subscribe(data => {
-        console.log(data)
+      .subscribe(async data => {
+
         this.type2 = data;
+        console.log(this.type2.cert)
+        this.TTP_PublicKey = await this.extractPubKFromCert(this.type2.cert, this.type2.cert)
+
+
+        if (this.TTP_PublicKey === null) {
+          console.log("No se ha podido verificar que el Issuer haya emitido el certificado correspondiente")
+
+        } else {
+          if (await this.verifyHash(this.TTP_PublicKey, this.type2.body, this.type2.pkp) == false) {
+            console.log("No se ha podido verificar al emisor del mensaje")
+          }else{
+            console.log("El mensaje ha sido recibido correctamente por la TTP")
+          }
+        }
       });
 
     this.usersSocketService.recibirType5()
@@ -124,9 +138,9 @@ export class AlcaldeComponent implements OnInit {
 
   enviarTTPType1() {
 
-    if(this.certificado == null)
-    {    M.toast({ html: 'Tienes que cargar el certificado primero' })
-  }
+    if (this.certificado == null) {
+      M.toast({ html: 'Tienes que cargar el certificado primero' })
+    }
     else {
       this.ttpSocketService.enviarType1("type1", this.certificado, this.Keyexport)
     }
@@ -134,67 +148,63 @@ export class AlcaldeComponent implements OnInit {
 
   async enviarPeticion() {
 
-    if(this.listaconectados.length < 5)
-    {
-        M.toast({ html: 'Espera a que todo el mundo esté conectado' })
+    if (this.listaconectados.length < 5) {
+      M.toast({ html: 'Espera a que todo el mundo esté conectado' })
 
     }
     else {
 
-    var k;
-    var encrypt;
-    var iv = window.crypto.getRandomValues(new Uint8Array(16));
-    this.iv = iv;
-    var des;
+      var k;
+      var encrypt;
+      var iv = window.crypto.getRandomValues(new Uint8Array(16));
+      this.iv = iv;
+      var des;
 
-    var res: any;
-    console.log('mensaje');
-
+      var res: any;
 
 
-    await crypto.subtle.generateKey({
-      name: "AES-CBC",
-      length: 256,
-    },
-      true,
-      ["encrypt", "decrypt"]
-    ).then(function (key) {
-      console.log(key);
-      k = key;
-    });
 
-    console.log(k);
-    this.key = k;
+      await crypto.subtle.generateKey({
+        name: "AES-CBC",
+        length: 256,
+      },
+        true,
+        ["encrypt", "decrypt"]
+      ).then(function (key) {
+        k = key;
+      });
 
-    const exportKeyData = await crypto.subtle.exportKey("raw", k)
+      this.key = k;
 
-    this.Keyexport = exportKeyData;
+      const exportKeyData = await crypto.subtle.exportKey("raw", k)
+
+      this.Keyexport = exportKeyData;
 
 
-    this.enviarTTPType1();
+      this.enviarTTPType1();
 
+    }
   }
-}
 
-  test(){
+  test() {
 
-    this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
-    .subscribe(async data => {
+    this.http.get('assets/certs/AlcaldeCert.json', { responseType: 'text' })
+      .subscribe(async data => {
 
-      console.log(JSON.parse(data))
+        console.log(JSON.parse(data))
 
-      var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n )
+        var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n)
 
-      var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
+        var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
 
-      console.log(publicKey)
+        console.log(publicKey)
 
-      console.log(privateKey)
+        console.log(privateKey)
 
-      publicKey.verify("ejemplo")
-    
-      
-    });
+        publicKey.verify("ejemplo")
+
+
+      });
   }
 
   //recoger y guardar el certificado
@@ -244,39 +254,67 @@ export class AlcaldeComponent implements OnInit {
     });
   }
 
+  async extractPubKFromCert(cert, issuerCert) {
+    const hashBody = await sha.digest(cert.cert, 'SHA-256')
+    var issuerPublicKey = new rsa.PublicKey(bigconv.hexToBigint(issuerCert.cert.publicKey.e), bigconv.hexToBigint(issuerCert.cert.publicKey.n))
+
+    console.log(issuerCert)
+
+    if (hashBody == bigconv.bigintToText(issuerPublicKey.verify(bigconv.hexToBigint(cert.signatureIssuer)))) {
+
+      return new rsa.PublicKey(bigconv.hexToBigint(cert.cert.publicKey.e), bigconv.hexToBigint(cert.cert.publicKey.n))
+
+    } else {
+      return null
+    }
+
+  }
+
+  async verifyHash(PublicKey, body, signature) {
+    const hashBody = await sha.digest(body, 'SHA-256')
+    var verify = false;
+
+    if (hashBody == bigconv.bigintToText(PublicKey.verify(bigconv.hexToBigint(signature)))) {
+        verify = true
+    }
+
+    return verify
+}
 
 
 
-//   async enviarK(){
-//     var midate = new Date();
-//     var body = { src: 'A', TTTP: 'TTP', dest: 'B', msg: this.Keyexport, type : 1}
 
-    
-//     const hash = await  this.hashbody(body);
-//     const pko = bigconv.bigintToHex(this.privateKey.sign(bigconv.textToBigint(hash)));
 
-//     this.ttpSocketService.enviarmensajek({body, pko})
+  //   async enviarK(){
+  //     var midate = new Date();
+  //     var body = { src: 'A', TTTP: 'TTP', dest: 'B', msg: this.Keyexport, type : 1}
 
-    
-// .subscribe(async (res: any) => {
-//   const hashBody = await sha.digest(res.body, 'SHA-256');
- 
-//   if (hashBody == bigconv.bigintToText(this.ttpPublicKey.verify(bigconv.hexToBigint(res.pkp)))) {
-//     console.log(res.body)
 
-    
-  
-//   } else {
-//     console.log("ui")
+  //     const hash = await  this.hashbody(body);
+  //     const pko = bigconv.bigintToHex(this.privateKey.sign(bigconv.textToBigint(hash)));
 
-//   }
-// });
+  //     this.ttpSocketService.enviarmensajek({body, pko})
 
-//   }
 
-  async hashbody(body){
+  // .subscribe(async (res: any) => {
+  //   const hashBody = await sha.digest(res.body, 'SHA-256');
 
-    const hash  = await sha.digest(body, 'SHA-256'); 
+  //   if (hashBody == bigconv.bigintToText(this.ttpPublicKey.verify(bigconv.hexToBigint(res.pkp)))) {
+  //     console.log(res.body)
+
+
+
+  //   } else {
+  //     console.log("ui")
+
+  //   }
+  // });
+
+  //   }
+
+  async hashbody(body) {
+
+    const hash = await sha.digest(body, 'SHA-256');
     return hash;
   }
 
@@ -288,6 +326,6 @@ export class AlcaldeComponent implements OnInit {
 
 
 
- 
+
 
 
