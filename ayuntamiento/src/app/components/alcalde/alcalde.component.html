@@ -1,41 +1,39 @@
-
 <div class="container">
 
-<h3>Bienvenido señor alcalde</h3>
+  <h3>Bienvenido señor alcalde</h3>
 
 
 
-    
-     <label for="usr">Mensaje:</label>
-     <input type="text" #titleInput class="form-control">
-     <br>
-     <button type="button" (click) = "enviarPeticion()" class="btn btn-primary">Envia!</button>
-     <br>
-     <button type="button" (click) = "salir()" class="btn btn-primary">Desconectarse!</button>
-     <br>
-     <button type="button" (click) = "firmar()" class="btn btn-primary">Firma!</button>
+  <form #decretoForm="ngForm">
+    <label for="usr">Mensaje:</label>
+    <input type="text" [(ngModel)]="decreto" name="decreto" #titleInput class="form-control">
+    <br>
+    <button type="button" (click)="enviarPeticion(decretoForm)" class="btn btn-primary">Envia!</button>
+    <br>
+    <button type="button" (click)="salir()" class="btn btn-primary">Desconectarse!</button>
+    <br>
+    <button type="button" (click)="firmar()" class="btn btn-primary">Firma!</button>
+  </form>
 
 
-     <div class="col s3">
+    <div class="col s3">
       <table class="striped highlight black-text">
-    
-          <th>TRABAJADORES ONLINE</th>
-  
-       
-      
-          <tr *ngFor="let string of conectados ">
-            <td>{{string}}</td>
-  
-          </tr>
-       
-        </table>
+
+        <th>TRABAJADORES ONLINE</th>
+
+
+
+        <tr *ngFor="let string of conectados ">
+          <td>{{string}}</td>
+
+        </tr>
+
+      </table>
     </div>
     <th> Introduce tu certificado:</th>
     <div class="form-group">
-      
+
       <input type="file" name="image" (change)="fileProgress($event)" />
     </div>
 
 </div>
-   
-

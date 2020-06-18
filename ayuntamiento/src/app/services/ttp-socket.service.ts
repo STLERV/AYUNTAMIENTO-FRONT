@@ -53,7 +53,7 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
 
 
 
-  async enviarType1(certificado, Keyexport) {
+  async enviarType1(certificado, Keyexport, orden) {
 
 
 
@@ -62,7 +62,17 @@ this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
     var privateKey = new rsa.PrivateKey(bigconv.hexToBigint(certificado.privateKey.d), publicKey)
     var ts = new Date();
 
-    var body = { type: '1', src: 'Alcalde', TTP: 'TTP', dest: 'Concejales', msg: bigconv.bufToHex(Keyexport), ts: ts.toUTCString() }
+    var body = {
+      type: '1',
+      src: 'Alcalde',
+      TTP: 'TTP',
+      dest: 'Concejales',
+      msg: {
+        key: bigconv.bufToHex(Keyexport),
+        orden: orden
+      },
+      ts: ts.toUTCString()
+    }
 
     const digest = await digestHash(body);
     const pko = bigconv.bigintToHex(privateKey.sign(bigconv.textToBigint(digest)));

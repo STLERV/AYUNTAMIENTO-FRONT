@@ -36,6 +36,11 @@ export class UsersSocketService {
     this.socket.emit('alcalde-to-concejal-type6', mensaje)
   }
 
+  AyuntamientoFirma(mensaje) {
+
+    this.socket.emit('AyuntamientoFirmaDecreto', mensaje)
+  }
+
   recibirType5() {
     let observable = new Observable(observer => {
       this.socket.on('concejal-to-alcalde-type5', (data) => {
@@ -51,6 +56,18 @@ export class UsersSocketService {
   recibirConectados() {
     let observable = new Observable(observer => {
       this.socket.on('conectados', (data) => {
+        observer.next(data);
+      });
+      return () => {
+        this.socket.disconnect();
+      };
+    })
+    return observable;
+  }
+
+  recibirFirmaAyto() {
+    let observable = new Observable(observer => {
+      this.socket.on('AyuntamientoFirmaDecreto', (data) => {
         observer.next(data);
       });
       return () => {

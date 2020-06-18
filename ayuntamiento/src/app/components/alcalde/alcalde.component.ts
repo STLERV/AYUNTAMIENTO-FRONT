@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ɵConsole } from '@angular/core';
 import { TtpSocketService } from '../../services/ttp-socket.service'
 import { UsersSocketService } from '../../services/users-socket.service'
+import { NgForm } from '@angular/forms';
 import * as rsa from 'rsa-scii-upc';
 import * as big from 'bigint-crypto-utils';
 import * as bigconv from 'bigint-conversion';
@@ -12,6 +13,7 @@ import * as sha from 'object-sha';
 import { LoginService } from 'src/app/services/login.service';
 import { Console } from 'console';
 import * as sss from 'shamirs-secret-sharing-ts';
+import { CommentStmt } from '@angular/compiler';
 
 declare var M: any;
 
@@ -50,7 +52,8 @@ export class AlcaldeComponent implements OnInit {
   usuarios: any = new HashMap()
   conectados: any;
 
-
+  decreto: any;
+  decretoForm: any;
   listaconectados: string[] = [];
   clavesShamir_d: any[] = [];
   clavesShamir_n: any[] = [];
@@ -64,6 +67,9 @@ export class AlcaldeComponent implements OnInit {
   aytoCert: any;
   TTP_PublicKey: any; //////////////////////////no es nada
   concejalPublicKey: any;
+  criptogramaDecreto: any;
+  decretoAFirmar: any;
+  decretoFinal: any;
 
   type2: any;
   type5: any;
@@ -118,9 +124,38 @@ export class AlcaldeComponent implements OnInit {
             console.log("No se ha podido verificar al emisor del mensaje")
           } else {
             console.log("El mensaje ha sido recibido correctamente por la TTP")
+            this.criptogramaDecreto = this.type2.body.msg
           }
         }
       });
+
+    this.usersSocketService.recibirFirmaAyto()
+      .subscribe(async data => {
+
+        this.decretoFinal = data 
+        console.log
+
+        if(await this.verifyHash(new rsa.PublicKey(bigconv.hexToBigint(this.aytoCert.cert.publicKey.e),bigconv.hexToBigint(this.aytoCert.cert.publicKey.n)),this.decretoFinal.Decreto,this.decretoFinal.Firma_Ayuntamiento) === false){
+          console.log("No se ha podido verificar la firma del Ayuntamiento")
+        }else{
+          console.log("Firma del Ayuntamiento verificada")
+        }
+
+
+        // if (this.TTP_PublicKey === null) {
+        //   console.log("No se ha podido verificar que el Issuer haya emitido el certificado correspondiente")
+
+        // } else {
+        //   if (await this.verifyHash(this.TTP_PublicKey, this.type2.body, this.type2.pkp) == false) {
+        //     console.log("No se ha podido verificar al emisor del mensaje")
+        //   } else {
+        //     console.log("El mensaje ha sido recibido correctamente por la TTP")
+        //     this.criptogramaDecreto = this.type2.body.msg
+        //   }
+        // }
+      });
+
+
 
     this.usersSocketService.recibirType5()
       .subscribe(async (data) => {
@@ -192,18 +227,20 @@ export class AlcaldeComponent implements OnInit {
     this.usersSocketService.salir();
   }
 
-  enviarTTPType1() {
+  enviarTTPType1(orden) {
 
     if (this.certificado == null) {
       M.toast({ html: 'Tienes que cargar el certificado primero' })
     }
     else {
-      this.ttpSocketService.enviarType1(this.certificado, this.Keyexport)
+      this.ttpSocketService.enviarType1(this.certificado, this.Keyexport, orden)
     }
   }
 
 
-  async enviarPeticion() {
+  async enviarPeticion(form: NgForm) {
+
+    var orden = form.value.decreto
 
     if (this.listaconectados.length < 5) {
       M.toast({ html: 'Espera a que todo el mundo esté conectado' })
@@ -232,7 +269,7 @@ export class AlcaldeComponent implements OnInit {
       this.Keyexport = exportKeyData;
 
 
-      this.enviarTTPType1();
+      this.enviarTTPType1(orden);
 
     }
   }
@@ -247,7 +284,35 @@ export class AlcaldeComponent implements OnInit {
 
   }
 
-  firmar() {
+  async decryptDecreto(key, ciphertext, iv) {
+    console.log(key)
+    console.log(ciphertext)
+    console.log(iv)
+
+    return await crypto.subtle.decrypt({
+      name: "AES-CBC",
+      iv: iv
+    },
+      key,
+      ciphertext
+    );
+
+  }
+
+  async importKey(key) {
+    return await crypto.subtle.importKey(
+      'raw',
+      key,
+      'AES-CBC',
+      true,
+      ["encrypt", "decrypt"]
+    );
+
+  }
+
+
+
+  async firmar() {
 
     var shamir_d_hex;
     var shamir_n_hex;
@@ -265,10 +330,74 @@ export class AlcaldeComponent implements OnInit {
 
     var decreto_publicKey = new rsa.PublicKey(bigconv.hexToBigint("10001"), bigconv.hexToBigint(shamir_n_hex))
     var decreto_privateKey = new rsa.PrivateKey(bigconv.hexToBigint(shamir_d_hex), decreto_publicKey)
-    console.log(decreto_publicKey)
-    console.log(decreto_privateKey)
+
+    // console.log(bigconv.hexToBigint(this.criptogramaDecreto))
+    // console.log("decrypt", decreto_privateKey.decrypt(bigconv.hexToBigint(this.criptogramaDecreto)))
+    // console.log(bigconv.bigintToText(decreto_privateKey.decrypt(bigconv.hexToBigint(this.criptogramaDecreto))))
+    console.log(this.criptogramaDecreto)
+
+    var key = bigconv.bigintToBuf(decreto_privateKey.decrypt(bigconv.hexToBigint(this.criptogramaDecreto.keyDecreto.key)))
+    var iv = bigconv.bigintToBuf(decreto_privateKey.decrypt(bigconv.hexToBigint(this.criptogramaDecreto.keyDecreto.iv)))
+    var encryptedData = bigconv.hexToBuf(this.criptogramaDecreto.decreto)
+
+    console.log(this.criptogramaDecreto.decreto)
+
+    var keyImported
+    var decryptedFinal
+
+    await this.importKey(key).then(async function (kimp) {
+
+      console.log(kimp)
+      keyImported = kimp
+
+    })
+      .catch(function (err) {
+        console.log(err)
+      })
+
+    await this.decryptDecreto(keyImported, encryptedData, iv).then(function (plaintext) {
+      console.log(JSON.parse(bigconv.bufToText(plaintext)))
+      decryptedFinal = JSON.parse(bigconv.bufToText(plaintext))
+
+    })
+      .catch(function (err) {
+        console.log(err)
+      })
+
+    this.decretoAFirmar = decryptedFinal
+
+    if (await this.verifyHash(this.TTP_PublicKey, this.decretoAFirmar.Decreto, this.decretoAFirmar.Verificacion_TTP) === false) {
+      console.log("No se ha podido verificar la verificación de la tercera parte de confianza")
+    } else {
+      var body = {
+        Decreto: this.decretoAFirmar.Decreto,
+        Verificacion_TTP: this.decretoAFirmar.Verificacion_TTP
+      }
+
+      const digest = await this.digestHash(body);
+      const firma = bigconv.bigintToHex(decreto_privateKey.sign(bigconv.textToBigint(digest)));
+
+      const bodyToEmit = {
+        Decreto: this.decretoAFirmar.Decreto,
+        Verificacion_TTP: this.decretoAFirmar.Verificacion_TTP,
+        Firma: {
+          signature: firma,
+          ID_firmador: 'Alcalde'
+        }
+      }
+
+      this.usersSocketService.AyuntamientoFirma(bodyToEmit)
+
+    }
+
 
   }
+
+  async digestHash(body) {
+    const d = await sha.digest(body, 'SHA-256');
+    return d;
+  }
+
 
 
 
