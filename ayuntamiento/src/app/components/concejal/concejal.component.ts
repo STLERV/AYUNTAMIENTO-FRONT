@@ -9,6 +9,7 @@ import { knownFolders, Folder, File } from "tns-core-modules/file-system";
 import { timingSafeEqual } from 'crypto';
 import * as fs from 'fs';
 import * as sha from 'object-sha';
+import { LoginService } from 'src/app/services/login.service';
 
 
 
@@ -25,56 +26,34 @@ declare var M: any;
 
 export class ConcejalComponent implements OnInit {
 
-  /*
-  SI QUEREIS COGER DATOS DEL CERTIFICADO YA SEA PARA FIMRAR, VERIFICAR, ENCRYPTAR ETC O PARA ENVIARSELO A ALGUIEN TENEIS QUE UTILIZAR EL SIGUIENTE CÓDIGO:
-
-  this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
-  .subscribe(async data => {
-
-    console.log(JSON.parse(data))
-
-    var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n )
-
-    var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
-
-    console.log(publicKey)
-
-    console.log(privateKey)
-
-    AHORA AQUI DEBERÍAS DE PONER EL CODIGO CORRESPONDIENTE PARA ENVIAR EL MENSAJE CON LA CLAVE PUBLICA, HAY QUE HACERLO DENTRO DE ESTE SUBSCRIBE  
-    
-    HAY UN EJEMPLO EN TTP-SOCKET-SERVICE EN TYPE1
-
-
-*/
-
-
+  conectados: any;
   listaconectados: string[] = [];
   concejalName: any;
   concejalprivatek: rsa.PrivateKey;;
   concejalpublick: rsa.PublicKey;;
   type3: any = null;
   fileData: File = null;
+  decretoFinal: any;
+  aytoCert: any;
 
   certificado: any;
 
-  conectados: any;
 
   TTP_PublicKey: any;
 
-  constructor(private route: ActivatedRoute, private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService, private router: Router) {
+  constructor(private route: ActivatedRoute, private loginService: LoginService, private ttpSocketService: TtpSocketService, private usersSocketService: UsersSocketService, private router: Router) {
 
   }
 
   async ngOnInit() {
 
-    this.concejalName = this.route.snapshot.paramMap.get('name');
     this.listaconectados;
+    this.concejalName = this.route.snapshot.paramMap.get('name');
 
 
 
 
-    await this.generarclaves();
+
 
 
     this.ttpSocketService.setupSocketConnection();
@@ -84,6 +63,12 @@ export class ConcejalComponent implements OnInit {
     this.usersSocketService.userIdentify(this.concejalName);
 
     this.usersSocketService.whoIsConnected();
+
+    this.loginService.getAytoCert()
+      .subscribe(data => {
+        this.aytoCert = data;
+        console.log(this.aytoCert)
+      })
 
 
 
@@ -108,6 +93,7 @@ export class ConcejalComponent implements OnInit {
 
           } else {
             console.log("He recibido mi parte de la clave privada del Decreto solicitado para firmar por parte del Alcalde")
+            M.toast({ html: 'Has recibido tu parte de la clave privada del decreto ¿Lo apruebas?' })
 
             this.ttpSocketService.enviarType4(this.concejalName, this.certificado)
 
@@ -121,27 +107,33 @@ export class ConcejalComponent implements OnInit {
     this.usersSocketService.recibirConectados()
       .subscribe((data: any) => {
 
-        //verificaciones corresponientes del proof
-
+        this.listaconectados = []
         this.conectados = data;
 
-        console.log(this.conectados);
+        console.log(this.conectados)
 
         this.conectados.forEach(element => {
           this.listaconectados.push(element)
         });
 
+      });
+
+
+
+
+    this.usersSocketService.recibirFirmaAyto()
+      .subscribe(async data => {
+
+        this.type3 = null
+        this.decretoFinal = data
 
       });
 
+
+
   }
 
-  async generarclaves() {
 
-    const { publicKey, privateKey } = await rsa.generateRandomKeys(3072);
-    this.concejalprivatek = privateKey;
-    this.concejalpublick = publicKey;
-  }
 
   async acepto() {
 
@@ -178,25 +170,114 @@ export class ConcejalComponent implements OnInit {
       }
 
       this.usersSocketService.enviarType5(bodyToEmit)
+      this.type3 = null
 
     }
   }
 
-  Salir() {
-    this.usersSocketService.salir();
-    this.router.navigateByUrl("login");
-
-    M.toast({ html: 'Adeeu' })
+  reset(){
+    window.location.reload();
   }
 
-  declino() {
+  async verificar(){
+
+    if (await this.verifyHash(new rsa.PublicKey(bigconv.hexToBigint(this.aytoCert.cert.publicKey.e), bigconv.hexToBigint(this.aytoCert.cert.publicKey.n)), this.decretoFinal.Decreto, this.decretoFinal.Firma_Ayuntamiento) === false) {
+      console.log("No se ha podido verificar la firma del Ayuntamiento")
+      M.toast({ html: "No se ha podido verificar la firma del Ayuntamiento" })
+
+    } else {
+      console.log("Firma del Ayuntamiento verificada")
+      M.toast({ html: "Firma del Ayuntamiento verificada" })
+
+    }
+  }
+
+  async Salir() {
+
+    if (this.type3 != null) {
+      await this.declino(true)
+
+    } else {
+      this.usersSocketService.salir();
+      this.router.navigateByUrl("login");
+
+      M.toast({ html: 'Adeeu' })
+    }
+
+
+  }
+
+  async declino(salir?) {
+
     if (this.certificado == null) {
       M.toast({ html: 'Primero tienes que cargar el certificado' })
+
+    } else if (salir && this.certificado != null) {
+      var ts = new Date();
+
+      var publicKey = new rsa.PublicKey(bigconv.hexToBigint(this.certificado.certificate.cert.publicKey.e), bigconv.hexToBigint(this.certificado.certificate.cert.publicKey.n))
+      var privateKey = new rsa.PrivateKey(bigconv.hexToBigint(this.certificado.privateKey.d), publicKey)
+
+
+      var body = {
+        type: '5',
+        src: this.concejalName,
+        dest: 'Alcalde',
+        msg: "Declined",
+        ts: ts.toUTCString()
+      }
+
+      const digest = await this.digestHash(body);
+      const po = bigconv.bigintToHex(privateKey.sign(bigconv.textToBigint(digest)));
+
+      const bodyToEmit = {
+        body: body,
+        po: po,
+        cert: this.certificado.certificate
+      }
+
+      this.usersSocketService.enviarType5Declined(bodyToEmit)
+      this.type3 = null
+
+      this.usersSocketService.salir();
+      this.router.navigateByUrl("login");
+
+      M.toast({ html: 'Adeeu' })
+
 
     }
     else {
       if (this.type3 == null) {
         M.toast({ html: 'No hay nada que acceptar aún' })
+      } else {
+        var ts = new Date();
+
+        var publicKey = new rsa.PublicKey(bigconv.hexToBigint(this.certificado.certificate.cert.publicKey.e), bigconv.hexToBigint(this.certificado.certificate.cert.publicKey.n))
+        var privateKey = new rsa.PrivateKey(bigconv.hexToBigint(this.certificado.privateKey.d), publicKey)
+
+
+        var body = {
+          type: '5',
+          src: this.concejalName,
+          dest: 'Alcalde',
+          msg: "Declined",
+          ts: ts.toUTCString()
+        }
+
+        const digest = await this.digestHash(body);
+        const po = bigconv.bigintToHex(privateKey.sign(bigconv.textToBigint(digest)));
+
+        const bodyToEmit = {
+          body: body,
+          po: po,
+          cert: this.certificado.certificate
+        }
+
+        this.usersSocketService.enviarType5Declined(bodyToEmit)
+        this.type3 = null
+
+
+
       }
     }
   }

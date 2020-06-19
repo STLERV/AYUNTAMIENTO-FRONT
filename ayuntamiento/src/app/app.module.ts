@@ -8,6 +8,7 @@ import { LoginComponent } from './components/login/login.component';
 import { NgForm } from '@angular/forms';
 import { AlcaldeComponent } from './components/alcalde/alcalde.component';
 import { ConcejalComponent } from './components/concejal/concejal.component';
+import { NgxJsonViewerModule } from 'ngx-json-viewer';
 
 
 @NgModule({
@@ -21,10 +22,8 @@ import { ConcejalComponent } from './components/concejal/concejal.component';
     BrowserModule,
     AppRoutingModule,
     FormsModule,
-    HttpClientModule,
-
-
-  
+    NgxJsonViewerModule,
+    HttpClientModule, 
     
   ],
   providers: [],

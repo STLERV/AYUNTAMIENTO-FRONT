@@ -31,6 +31,12 @@ export class UsersSocketService {
     this.socket.emit('concejal-to-alcalde-type5', mensaje)
   }
 
+  enviarType5Declined(mensaje) {
+
+
+    this.socket.emit('concejal-to-alcalde-type5Declined', mensaje)
+  }
+
   enviarType6(mensaje) {
 
     this.socket.emit('alcalde-to-concejal-type6', mensaje)
@@ -52,6 +58,20 @@ export class UsersSocketService {
     })
     return observable;
   }
+
+  recibirType5Declined() {
+    let observable = new Observable(observer => {
+      this.socket.on('concejal-to-alcalde-type5Declined', (data) => {
+        console.log("HOLA")
+        observer.next(data);
+      });
+      return () => {
+        this.socket.disconnect();
+      };
+    })
+    return observable;
+  }
+
 
   recibirConectados() {
     let observable = new Observable(observer => {

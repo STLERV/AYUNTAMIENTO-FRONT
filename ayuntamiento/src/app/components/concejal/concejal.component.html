@@ -1,33 +1,49 @@
 <div class="container">
 
-  <h3>Bienvenido señor concejal</h3>
+  <h3>Bienvenido señor {{concejalName}}</h3>
 
 
 
-  <div class="form-group">
+  <form #decretoForm="ngForm">
     <br>
     <button type="button" (click)="acepto()" class="btn btn-primary">Accepto!</button>
     <br>
     <button type="button" (click)="declino()" class="btn btn-primary">Declino!</button>
     <br>
     <button type="button" (click)="Salir()" class="btn btn-primary">Desconectarse!</button>
-  </div>
+  </form>
+
 
   <div class="col s3">
     <table class="striped highlight black-text">
-  
-        <th>TRABAJADORES ONLINE</th>
 
-     
-    
-        <tr *ngFor="let string of conectados ">
-          <td>{{string}}</td>
+      <th>TRABAJADORES ONLINE</th>
 
-        </tr>
-     
-      </table>
+
+
+      <tr *ngFor="let string of conectados ">
+        <td>{{string}}</td>
+
+      </tr>
+
+    </table>
   </div>
-</div>
-<div class="form-group">
-  <input type="file" name="image" (change)="fileProgress($event)" />
+  <th> Introduce tu certificado:</th>
+  <div class="form-group">
+
+    <input type="file" name="image" (change)="fileProgress($event)" />
+  </div>
+  
+  <div *ngIf="decretoFinal; then json">
+
+  </div>
+
+  <ng-template #json>
+    <ngx-json-viewer [json]="decretoFinal"></ngx-json-viewer>
+    <button type="button" (click)="verificar()" class="btn btn-primary">Verifica las firmas!</button>
+    <button type="button" (click)="reset()" class="btn btn-primary">Reiniciar</button>
+
+  </ng-template>
+  
+
 </div>

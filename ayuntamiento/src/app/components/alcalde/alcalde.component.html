@@ -16,24 +16,38 @@
   </form>
 
 
-    <div class="col s3">
-      <table class="striped highlight black-text">
+  <div class="col s3">
+    <table class="striped highlight black-text">
 
-        <th>TRABAJADORES ONLINE</th>
+      <th>TRABAJADORES ONLINE</th>
 
 
 
-        <tr *ngFor="let string of conectados ">
-          <td>{{string}}</td>
+      <tr *ngFor="let string of conectados ">
+        <td>{{string}}</td>
 
-        </tr>
+      </tr>
 
-      </table>
-    </div>
-    <th> Introduce tu certificado:</th>
-    <div class="form-group">
+    </table>
+  </div>
+  <th> Introduce tu certificado:</th>
+  <div class="form-group">
 
-      <input type="file" name="image" (change)="fileProgress($event)" />
-    </div>
+    <input type="file" name="image" (change)="fileProgress($event)" />
+  </div>
+
+  <div *ngIf="decretoFinal; then json">
+
+  </div>
+
+  <ng-template #json>
+    <ngx-json-viewer [json]="decretoFinal"></ngx-json-viewer>
+    <button type="button" (click)="verificar()" class="btn btn-primary">Verifica las firmas!</button>
+    <button type="button" (click)="reset()" class="btn btn-primary">Reiniciar</button>
+
+  </ng-template>
+  
 
 </div>
+
+
