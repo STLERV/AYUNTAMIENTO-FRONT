@@ -111,6 +111,9 @@ export class AlcaldeComponent implements OnInit {
 
         this.decretoFinal = data
 
+        M.toast({ html: 'Se ha firmado el decreto y lo has recibido' })
+
+
         this.clavesShamir_d = [];
         this.clavesShamir_n = [];
         this.peticionesDeclined = [];
@@ -212,6 +215,29 @@ export class AlcaldeComponent implements OnInit {
 
             M.toast({ html: this.type5.body.src + " ha rechazado la firma" })
             console.log("Propuesta rechazada por " + this.type5.body.src, this.type5)
+
+            var publicKey = new rsa.PublicKey(bigconv.hexToBigint(this.certificado.certificate.cert.publicKey.e), bigconv.hexToBigint(this.certificado.certificate.cert.publicKey.n))
+            var privateKey = new rsa.PrivateKey(bigconv.hexToBigint(this.certificado.privateKey.d), publicKey)
+      
+            var ts = new Date();
+
+            var body = {
+              type: '6',
+              src: this.type5.body.src,
+              dest: 'Alcalde',
+              ts: ts.toUTCString()
+            }
+      
+            const digest = await this.digestHash(body);
+            const po = bigconv.bigintToHex(privateKey.sign(bigconv.textToBigint(digest)));
+      
+            const bodyToEmit = {
+              body: body,
+              pr: po,
+              cert: this.certificado.certificate
+            }
+      
+            this.usersSocketService.enviarType6(bodyToEmit)
 
 
             if (this.peticionesDeclined.length == 3) {

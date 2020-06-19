@@ -121,8 +121,8 @@ export class ConcejalComponent implements OnInit {
             this.type3 = null;
 
           } else {
-            console.log("El alcalde me confirma la recepción de mi parte aceptada", this.type6)
-            M.toast({ html: 'El Alcalde me confirma la recepción de mi parte aceptada' })
+            console.log("El alcalde me confirma la recepción de mi parte aceptada o rechazada", this.type6)
+            M.toast({ html: 'El Alcalde me confirma la recepción de mi parte aceptada o rechazada' })
 
           }
         }
@@ -152,6 +152,9 @@ export class ConcejalComponent implements OnInit {
 
         this.type3 = null
         this.decretoFinal = data
+
+        M.toast({ html: 'Se ha firmado el decreto y lo has recibido' })
+
 
       });
 
@@ -294,6 +297,8 @@ export class ConcejalComponent implements OnInit {
       }
 
       this.usersSocketService.enviarType5Declined(bodyToEmit)
+      M.toast({ html: 'Rechazo el decreto' })
+
       this.type3 = null
 
       this.usersSocketService.salir();
@@ -331,6 +336,8 @@ export class ConcejalComponent implements OnInit {
         }
 
         this.usersSocketService.enviarType5Declined(bodyToEmit)
+        M.toast({ html: 'Rechazo el decreto' })
+
         this.type3 = null
 
 
