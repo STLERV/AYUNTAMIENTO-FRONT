@@ -15,28 +15,6 @@ import * as sha from 'object-sha';
 })
 export class TtpSocketService {
 
-  /*
-SI QUEREIS COGER DATOS DEL CERTIFICADO YA SEA PARA FIMRAR, VERIFICAR, ENCRYPTAR ETC O PARA ENVIARSELO A ALGUIEN TENEIS QUE UTILIZAR EL SIGUIENTE CÓDIGO:
-
-this.http.get('assets/certs/AlcaldeCert.json', {responseType: 'text'})
-.subscribe(async data => {
-
-  console.log(JSON.parse(data))
-
-  var publicKey = new rsa.PublicKey(JSON.parse(data).certificate.cert.publicKey.e, JSON.parse(data).certificate.cert.publicKey.n )
-
-  var privateKey = new rsa.PrivateKey(JSON.parse(data).privateKey.d, publicKey)
-
-  console.log(publicKey)
-
-  console.log(privateKey)
-
-  AHORA AQUI DEBERÍAS DE PONER EL CODIGO CORRESPONDIENTE PARA ENVIAR EL MENSAJE CON LA CLAVE PUBLICA, HAY QUE HACERLO DENTRO DE ESTE SUBSCRIBE  
-  
-  HAY UN EJEMPLO EN TTP-SOCKET-SERVICE EN TYPE1
-
-
-*/
 
   socket;
 

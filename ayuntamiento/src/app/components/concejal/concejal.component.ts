@@ -32,6 +32,7 @@ export class ConcejalComponent implements OnInit {
   concejalprivatek: rsa.PrivateKey;;
   concejalpublick: rsa.PublicKey;;
   type3: any = null;
+  type6: any = null;
   fileData: File = null;
   decretoFinal: any;
   aytoCert: any;
@@ -67,7 +68,6 @@ export class ConcejalComponent implements OnInit {
     this.loginService.getAytoCert()
       .subscribe(data => {
         this.aytoCert = data;
-        console.log(this.aytoCert)
       })
 
 
@@ -76,8 +76,6 @@ export class ConcejalComponent implements OnInit {
       .subscribe(async data => {
 
         //verificaciones corresponientes del proof
-
-        this.usersSocketService.enviarType6("type6");
 
         this.type3 = data;
         this.TTP_PublicKey = await this.extractPubKFromCert(this.type3.cert, this.type3.cert)
@@ -94,8 +92,37 @@ export class ConcejalComponent implements OnInit {
           } else {
             console.log("He recibido mi parte de la clave privada del Decreto solicitado para firmar por parte del Alcalde")
             M.toast({ html: 'Has recibido tu parte de la clave privada del decreto ¿Lo apruebas?' })
+            console.log("He recibido la parte de clave privada que me toca", this.type3)
 
             this.ttpSocketService.enviarType4(this.concejalName, this.certificado)
+
+          }
+        }
+
+
+
+      });
+
+    this.usersSocketService.recibirType6()
+      .subscribe(async data => {
+
+        //verificaciones corresponientes del proof
+
+        this.type6 = data;
+        var alcaldePublicKey = await this.extractPubKFromCert(this.type6.cert, this.aytoCert)
+
+
+        if (alcaldePublicKey === null) {
+          console.log("No se ha podido verificar que el Issuer haya emitido el certificado correspondiente")
+          this.type3 = null;
+        } else {
+          if (await this.verifyHash(alcaldePublicKey, this.type6.body, this.type6.pr) == false) {
+            console.log("No se ha podido verificar al emisor del mensaje")
+            this.type3 = null;
+
+          } else {
+            console.log("El alcalde me confirma la recepción de mi parte aceptada", this.type6)
+            M.toast({ html: 'El Alcalde me confirma la recepción de mi parte aceptada' })
 
           }
         }
@@ -110,7 +137,6 @@ export class ConcejalComponent implements OnInit {
         this.listaconectados = []
         this.conectados = data;
 
-        console.log(this.conectados)
 
         this.conectados.forEach(element => {
           this.listaconectados.push(element)
@@ -170,16 +196,18 @@ export class ConcejalComponent implements OnInit {
       }
 
       this.usersSocketService.enviarType5(bodyToEmit)
+      M.toast({ html: 'Acepto el decreto' })
+
       this.type3 = null
 
     }
   }
 
-  reset(){
+  reset() {
     window.location.reload();
   }
 
-  async verificar(){
+  async verificar() {
 
     if (await this.verifyHash(new rsa.PublicKey(bigconv.hexToBigint(this.aytoCert.cert.publicKey.e), bigconv.hexToBigint(this.aytoCert.cert.publicKey.n)), this.decretoFinal.Decreto, this.decretoFinal.Firma_Ayuntamiento) === false) {
       console.log("No se ha podido verificar la firma del Ayuntamiento")
@@ -189,8 +217,37 @@ export class ConcejalComponent implements OnInit {
       console.log("Firma del Ayuntamiento verificada")
       M.toast({ html: "Firma del Ayuntamiento verificada" })
 
+      var x = {
+        Decreto: this.decretoFinal.Decreto.Decreto,
+        Verificacion_TTP: this.decretoFinal.Decreto.Verificacion_TTP
+      }
+      var decreto_publicKey = new rsa.PublicKey(bigconv.hexToBigint(this.decretoFinal.Decreto.Decreto.decreto_publickey.e), bigconv.hexToBigint(this.decretoFinal.Decreto.Decreto.decreto_publickey.n))
+
+      if (await this.verifyHash(decreto_publicKey, x, this.decretoFinal.Decreto.Firma.signature) === false) {
+        console.log("No se ha podido verificar la firma del decreto")
+        M.toast({ html: "No se ha podido verificar la firma del decreto" })
+      } else {
+        console.log("Firma del Decreto verificada")
+        M.toast({ html: "Firma del Decreto verificada" })
+
+
+        if (await this.verifyHash(this.TTP_PublicKey, this.decretoFinal.Decreto.Decreto, this.decretoFinal.Decreto.Verificacion_TTP) === false) {
+          console.log("No se ha podido verificar la firma de la TTP")
+          M.toast({ html: "No se ha podido verificar la firma de la TTP" })
+        } else {
+          console.log("Firma de la TTP verificada")
+          M.toast({ html: "Firma de la TTP verificada" })
+
+        }
+      }
+
+
+
     }
+
+
   }
+
 
   async Salir() {
 
@@ -302,10 +359,16 @@ export class ConcejalComponent implements OnInit {
     };
 
     let MyCertJson: MyCert = JSON.parse(fileContent);
-    this.certificado = MyCertJson;
 
-    console.log(MyCertJson.certificate.cert.publicKey.e);
-    M.toast({ html: 'Certificado cargado' })
+    if (MyCertJson.certificate.cert.ID != this.concejalName) {
+      M.toast({ html: 'Este certificado no te corresponde' })
+    } else {
+      this.certificado = MyCertJson;
+      M.toast({ html: 'Certificado cargado' })
+    }
+
+
+
 
 
   }
@@ -314,7 +377,6 @@ export class ConcejalComponent implements OnInit {
     const hashBody = await sha.digest(cert.cert, 'SHA-256')
     var issuerPublicKey = new rsa.PublicKey(bigconv.hexToBigint(issuerCert.cert.publicKey.e), bigconv.hexToBigint(issuerCert.cert.publicKey.n))
 
-    console.log(issuerCert)
 
     if (hashBody == bigconv.bigintToText(issuerPublicKey.verify(bigconv.hexToBigint(cert.signatureIssuer)))) {
 
@@ -344,7 +406,6 @@ export class ConcejalComponent implements OnInit {
       if (event.target.files && event.target.files[0]) {
         var reader = new FileReader();
         reader.onload = (e) => {
-          console.log(reader.result);
           const results = reader.result.toString();
           resolve(results);
 

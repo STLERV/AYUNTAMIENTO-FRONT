@@ -15,6 +15,7 @@ import { Console } from 'console';
 import * as sss from 'shamirs-secret-sharing-ts';
 import { CommentStmt } from '@angular/compiler';
 import { Observable, Observer } from 'rxjs';
+import { typeWithParameters } from '@angular/compiler/src/render3/util';
 
 declare var M: any;
 
@@ -77,7 +78,6 @@ export class AlcaldeComponent implements OnInit {
     this.loginService.getAytoCert()
       .subscribe(data => {
         this.aytoCert = data;
-        console.log(this.aytoCert)
       })
 
 
@@ -87,7 +87,6 @@ export class AlcaldeComponent implements OnInit {
       .subscribe(async data => {
 
         this.type2 = data;
-        console.log(this.type2.cert)
         this.TTP_PublicKey = await this.extractPubKFromCert(this.type2.cert, this.type2.cert)
 
 
@@ -101,13 +100,14 @@ export class AlcaldeComponent implements OnInit {
             console.log("El mensaje ha sido recibido correctamente por la TTP")
             this.criptogramaDecreto = this.type2.body.msg
             M.toast({ html: "La TTP confirma la recepción de tu petición y has recibido el criptograma del decreto" })
+            console.log("Criptograma decreto",this.criptogramaDecreto)
 
           }
         }
       });
 
     this.usersSocketService.recibirFirmaAyto()
-      .subscribe(async data => {   
+      .subscribe(async data => {
 
         this.decretoFinal = data
 
@@ -135,20 +135,16 @@ export class AlcaldeComponent implements OnInit {
           if (await this.verifyHash(this.concejalPublicKey, this.type5.body, this.type5.po) === false) {
             console.log("No se ha podido verificar al emisor del mensaje")
           } else {
-            console.log(this.type5.body.msg.d)
-            console.log(this.type5.body.msg.n)
 
             var shamirKey_d;
             var shamirKey_n;
 
             await this.decrypt(this.key, this.type5.body.msg.d).then(function (plaintext) {
-              console.log(plaintext)
               shamirKey_d = plaintext
 
             });
 
             await this.decrypt(this.key, this.type5.body.msg.n).then(function (plaintext) {
-              console.log(plaintext)
               shamirKey_n = plaintext
 
             });
@@ -157,14 +153,39 @@ export class AlcaldeComponent implements OnInit {
             this.clavesShamir_n.push(bigconv.bufToText(shamirKey_n))
 
             M.toast({ html: this.type5.body.src + " ha aprobado la firma, has recibido y almacenado su parte de la clave" })
+            console.log("Propuesta aprobada por " + this.type5.body.src, this.type5)
+
+            var publicKey = new rsa.PublicKey(bigconv.hexToBigint(this.certificado.certificate.cert.publicKey.e), bigconv.hexToBigint(this.certificado.certificate.cert.publicKey.n))
+            var privateKey = new rsa.PrivateKey(bigconv.hexToBigint(this.certificado.privateKey.d), publicKey)
+      
+            var ts = new Date();
+
+            var body = {
+              type: '6',
+              src: this.type5.body.src,
+              dest: 'Alcalde',
+              ts: ts.toUTCString()
+            }
+      
+            const digest = await this.digestHash(body);
+            const po = bigconv.bigintToHex(privateKey.sign(bigconv.textToBigint(digest)));
+      
+            const bodyToEmit = {
+              body: body,
+              pr: po,
+              cert: this.certificado.certificate
+            }
+      
+            this.usersSocketService.enviarType6(bodyToEmit)
+      
+
+
 
             if (this.clavesShamir_d.length == 2) {
               M.toast({ html: "Ha habido un acuerdo entre los concejales, ya puedes firmar!" })
 
             }
 
-            console.log("d", this.clavesShamir_d)
-            console.log("n", this.clavesShamir_n)
 
 
           }
@@ -190,6 +211,8 @@ export class AlcaldeComponent implements OnInit {
             this.peticionesDeclined.push(this.type5.body.src)
 
             M.toast({ html: this.type5.body.src + " ha rechazado la firma" })
+            console.log("Propuesta rechazada por " + this.type5.body.src, this.type5)
+
 
             if (this.peticionesDeclined.length == 3) {
               M.toast({ html: "No ha habido acuerdo entre los concejales, Se rechaza el decreto" })
@@ -230,11 +253,11 @@ export class AlcaldeComponent implements OnInit {
     this.usersSocketService.salir();
   }
 
-  reset(){
+  reset() {
     window.location.reload();
   }
 
-  async verificar(){
+  async verificar() {
 
     if (await this.verifyHash(new rsa.PublicKey(bigconv.hexToBigint(this.aytoCert.cert.publicKey.e), bigconv.hexToBigint(this.aytoCert.cert.publicKey.n)), this.decretoFinal.Decreto, this.decretoFinal.Firma_Ayuntamiento) === false) {
       console.log("No se ha podido verificar la firma del Ayuntamiento")
@@ -244,8 +267,37 @@ export class AlcaldeComponent implements OnInit {
       console.log("Firma del Ayuntamiento verificada")
       M.toast({ html: "Firma del Ayuntamiento verificada" })
 
+      var x = {
+        Decreto: this.decretoFinal.Decreto.Decreto,
+        Verificacion_TTP: this.decretoFinal.Decreto.Verificacion_TTP
+      }
+      var decreto_publicKey = new rsa.PublicKey(bigconv.hexToBigint(this.decretoFinal.Decreto.Decreto.decreto_publickey.e), bigconv.hexToBigint(this.decretoFinal.Decreto.Decreto.decreto_publickey.n))
+
+      if (await this.verifyHash(decreto_publicKey, x, this.decretoFinal.Decreto.Firma.signature) === false) {
+        console.log("No se ha podido verificar la firma del decreto")
+        M.toast({ html: "No se ha podido verificar la firma del decreto" })
+      } else {
+        console.log("Firma del Decreto verificada")
+        M.toast({ html: "Firma del Decreto verificada" })
+
+
+        if (await this.verifyHash(this.TTP_PublicKey, this.decretoFinal.Decreto.Decreto, this.decretoFinal.Decreto.Verificacion_TTP) === false) {
+          console.log("No se ha podido verificar la firma de la TTP")
+          M.toast({ html: "No se ha podido verificar la firma de la TTP" })
+        } else {
+          console.log("Firma de la TTP verificada")
+          M.toast({ html: "Firma de la TTP verificada" })
+
+        }
+      }
+
+
+
     }
+
+
   }
+
 
 
   enviarTTPType1(orden) {
@@ -306,9 +358,6 @@ export class AlcaldeComponent implements OnInit {
   }
 
   async decryptDecreto(key, ciphertext, iv) {
-    console.log(key)
-    console.log(ciphertext)
-    console.log(iv)
 
     return await crypto.subtle.decrypt({
       name: "AES-CBC",
@@ -348,20 +397,20 @@ export class AlcaldeComponent implements OnInit {
       var decreto_publicKey = new rsa.PublicKey(bigconv.hexToBigint("10001"), bigconv.hexToBigint(shamir_n_hex))
       var decreto_privateKey = new rsa.PrivateKey(bigconv.hexToBigint(shamir_d_hex), decreto_publicKey)
 
-      console.log(this.criptogramaDecreto)
+      console.log("Recuperada la clave privada para firmar  ", decreto_privateKey)
+
+
 
       var key = bigconv.bigintToBuf(decreto_privateKey.decrypt(bigconv.hexToBigint(this.criptogramaDecreto.keyDecreto.key)))
       var iv = bigconv.bigintToBuf(decreto_privateKey.decrypt(bigconv.hexToBigint(this.criptogramaDecreto.keyDecreto.iv)))
       var encryptedData = bigconv.hexToBuf(this.criptogramaDecreto.decreto)
 
-      console.log(this.criptogramaDecreto.decreto)
 
       var keyImported
       var decryptedFinal
 
       await this.importKey(key).then(async function (kimp) {
 
-        console.log(kimp)
         keyImported = kimp
 
       })
@@ -370,7 +419,6 @@ export class AlcaldeComponent implements OnInit {
         })
 
       await this.decryptDecreto(keyImported, encryptedData, iv).then(function (plaintext) {
-        console.log(JSON.parse(bigconv.bufToText(plaintext)))
         decryptedFinal = JSON.parse(bigconv.bufToText(plaintext))
 
       })
@@ -379,6 +427,9 @@ export class AlcaldeComponent implements OnInit {
         })
 
       this.decretoAFirmar = decryptedFinal
+
+      console.log("Descifrado el criptograma del decreto  ", this.decretoAFirmar)
+
 
       if (await this.verifyHash(this.TTP_PublicKey, this.decretoAFirmar.Decreto, this.decretoAFirmar.Verificacion_TTP) === false) {
         console.log("No se ha podido verificar la verificación de la tercera parte de confianza")
@@ -401,6 +452,10 @@ export class AlcaldeComponent implements OnInit {
         }
 
         this.usersSocketService.AyuntamientoFirma(bodyToEmit)
+
+        console.log("Firmado el decreto")
+        M.toast({ html: 'Firmado el decreto!' })
+
 
       }
 
@@ -445,10 +500,16 @@ export class AlcaldeComponent implements OnInit {
     };
 
     let MyCertJson: MyCert = JSON.parse(fileContent);
-    this.certificado = MyCertJson;
 
-    console.log(MyCertJson.certificate.cert.publicKey.e);
-    M.toast({ html: 'Certificado cargado' })
+    if (MyCertJson.certificate.cert.ID != "alcalde"){
+      M.toast({ html: 'Este certificado no te corresponde' })
+    }else{
+      this.certificado = MyCertJson;
+      M.toast({ html: 'Certificado cargado' })
+    }
+    
+
+
 
 
   }
@@ -460,7 +521,6 @@ export class AlcaldeComponent implements OnInit {
       if (event.target.files && event.target.files[0]) {
         var reader = new FileReader();
         reader.onload = (e) => {
-          console.log(reader.result);
           const results = reader.result.toString();
           resolve(results);
 
@@ -474,7 +534,6 @@ export class AlcaldeComponent implements OnInit {
     const hashBody = await sha.digest(cert.cert, 'SHA-256')
     var issuerPublicKey = new rsa.PublicKey(bigconv.hexToBigint(issuerCert.cert.publicKey.e), bigconv.hexToBigint(issuerCert.cert.publicKey.n))
 
-    console.log(issuerCert)
 
     if (hashBody == bigconv.bigintToText(issuerPublicKey.verify(bigconv.hexToBigint(cert.signatureIssuer)))) {
 
@@ -498,35 +557,6 @@ export class AlcaldeComponent implements OnInit {
   }
 
 
-
-
-
-  //   async enviarK(){
-  //     var midate = new Date();
-  //     var body = { src: 'A', TTTP: 'TTP', dest: 'B', msg: this.Keyexport, type : 1}
-
-
-  //     const hash = await  this.hashbody(body);
-  //     const pko = bigconv.bigintToHex(this.privateKey.sign(bigconv.textToBigint(hash)));
-
-  //     this.ttpSocketService.enviarmensajek({body, pko})
-
-
-  // .subscribe(async (res: any) => {
-  //   const hashBody = await sha.digest(res.body, 'SHA-256');
-
-  //   if (hashBody == bigconv.bigintToText(this.ttpPublicKey.verify(bigconv.hexToBigint(res.pkp)))) {
-  //     console.log(res.body)
-
-
-
-  //   } else {
-  //     console.log("ui")
-
-  //   }
-  // });
-
-  //   }
 
   async hashbody(body) {
 

@@ -1,39 +1,9 @@
-<!-- 
-<div class="container">
-    <div class="row">
-        <div class="col s5">
-            <h5>Pon tus datos para iniciar sesión</h5>
-            <div class="card">
-                <div class="card-content">
-                    <form #loginForm="ngForm" (ngSubmit)="login(loginForm)">
-                        <div class = "row">
-                            <div class = "input-field col s12">
-                                <input type="text" name = "name" placeholder="Tu nombre">
-                            </div>
-                            <div class = "input-field col s12">
-                                <input type="text" name = "pass" placeholder="Tu pass">
-                            </div>
-                             </div>
-                             <button class="btn ">Login</button>
-
-                             
-                    </form>
-
-                </div>
-            </div>
-
-        </div>
-    </div>
- 
-</div> -->
-
-
 
 <div class="container">
     <div class="form-group">
      <h4> INTRODUCE TUS DATOS: </h4>
      <input type="text" #name  placeholder="TU NOMBRE" class="form-control">
-     <input type="text" #pass  placeholder="TU CONTRASEÑA" class="form-control">
+     <input type="password" #pass  placeholder="TU CONTRASEÑA" class="form-control">
      </div>
      <button type="button" (click) = "login(name.value, pass.value)" class="btn btn-primary"> A TRABAJAR POR EL BIEN !</button>
    </div>

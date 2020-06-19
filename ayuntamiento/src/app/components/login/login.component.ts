@@ -30,7 +30,6 @@ export class LoginComponent implements OnInit {
 
     this.loginservice.login(name,pass)
       .subscribe((res) => {
-        console.log(res)
 
         if (res["data"] == null) {
           M.toast({ html: 'Ese usuario no existe' })

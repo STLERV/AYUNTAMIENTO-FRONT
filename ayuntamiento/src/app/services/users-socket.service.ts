@@ -59,10 +59,21 @@ export class UsersSocketService {
     return observable;
   }
 
+  recibirType6() {
+    let observable = new Observable(observer => {
+      this.socket.on('concejal-to-alcalde-type6', (data) => {
+        observer.next(data);
+      });
+      return () => {
+        this.socket.disconnect();
+      };
+    })
+    return observable;
+  }
+
   recibirType5Declined() {
     let observable = new Observable(observer => {
       this.socket.on('concejal-to-alcalde-type5Declined', (data) => {
-        console.log("HOLA")
         observer.next(data);
       });
       return () => {
